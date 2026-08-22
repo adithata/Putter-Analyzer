@@ -16,8 +16,25 @@ body{
   color:var(--text);min-height:100vh;transition:background .2s ease,box-shadow .2s ease
 }
 body.address-ready{
-  background:#0b1710;
-  box-shadow:inset 0 0 0 7px var(--good),inset 0 0 70px rgba(63,185,80,.20)
+  background:var(--good);
+  box-shadow:none;
+}
+
+body.address-ready .wrap{
+  background:var(--bg);
+}
+
+@media (min-width: 620px){
+  .wrap{
+    min-height:100vh;
+    background:var(--bg);
+  }
+
+  body.address-ready .wrap{
+    box-shadow:
+      -18px 0 34px rgba(0,0,0,.22),
+       18px 0 34px rgba(0,0,0,.22);
+  }
 }
 .wrap{width:min(560px,100%);margin:0 auto;padding:24px 18px 40px}
 h1{margin:8px 0 2px;font-size:30px}.sub{color:var(--muted);margin-bottom:20px}
@@ -172,6 +189,49 @@ button:active{transform:scale(.99)}button:disabled{opacity:.45}
   font-size:12px;
 }
 
+
+.addressStability{
+  margin:0 0 14px;
+  padding:12px 14px;
+  border:1px solid var(--border);
+  border-radius:14px;
+  background:var(--card);
+}
+.stabilityTop{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+}
+.stabilityState{
+  font-size:13px;
+  font-weight:800;
+  letter-spacing:.05em;
+}
+.stabilityTrack{
+  height:9px;
+  margin-top:9px;
+  border-radius:999px;
+  overflow:hidden;
+  background:#21262d;
+}
+.stabilityFill{
+  width:8%;
+  height:100%;
+  border-radius:999px;
+  background:var(--muted);
+  transition:width .18s ease,background .18s ease;
+}
+.addressStability.moving .stabilityState{color:var(--bad)}
+.addressStability.moving .stabilityFill{width:20%;background:var(--bad)}
+.addressStability.settling .stabilityState{color:var(--warn)}
+.addressStability.settling .stabilityFill{width:65%;background:var(--warn)}
+.addressStability.ready{border-color:var(--good)}
+.addressStability.ready .stabilityState{color:var(--good)}
+.addressStability.ready .stabilityFill{width:100%;background:var(--good)}
+.addressStability.idle .stabilityState{color:var(--muted)}
+.addressStability.idle .stabilityFill{width:8%;background:var(--muted)}
+
 </style>
 </head>
 <body>
@@ -190,6 +250,17 @@ button:active{transform:scale(.99)}button:disabled{opacity:.45}
   </div>
 
   <button id="connectBtn">Connect to Putter</button>
+
+  <div id="addressStability" class="addressStability idle hidden">
+    <div class="stabilityTop">
+      <div class="label">Address stability</div>
+      <div id="stabilityState" class="stabilityState">WAITING</div>
+    </div>
+    <div class="stabilityTrack">
+      <div id="stabilityFill" class="stabilityFill"></div>
+    </div>
+  </div>
+
 
   <div id="phoneControls" class="hidden">
     <div class="controls">
@@ -429,13 +500,48 @@ function setConnected(on){
   $('statusText').innerHTML=on?'<strong>Connected</strong>':'<strong>Not connected</strong>';
   $('connectBtn').textContent=on?'Connected to Putter':'Connect to Putter';
   $('phoneControls').classList.toggle('hidden',!on);
+  $('addressStability').classList.toggle('hidden',!on);
+
+  if(!on){
+    setStabilityState('IDLE');
+  }
 }
 
-function setAddressReady(ready){document.body.classList.toggle('address-ready',ready)}
+function setAddressReady(ready){
+  document.body.classList.toggle('address-ready',ready);
+}
+
+function setStabilityState(state){
+  const panel=$('addressStability');
+  const label=$('stabilityState');
+
+  panel.classList.remove('idle','moving','settling','ready');
+
+  if(state==='READY'){
+    panel.classList.add('ready');
+    label.textContent='READY';
+    setAddressReady(true);
+  }
+  else if(state==='SETTLING'){
+    panel.classList.add('settling');
+    label.textContent='SETTLING';
+    setAddressReady(false);
+  }
+  else if(state==='MOVING'){
+    panel.classList.add('moving');
+    label.textContent='MOVING';
+    setAddressReady(false);
+  }
+  else{
+    panel.classList.add('idle');
+    label.textContent='WAITING';
+    setAddressReady(false);
+  }
+}
 
 function showMode(mode){
   currentMode=mode;
-  setAddressReady(false);
+  setStabilityState(mode ? 'MOVING' : 'IDLE');
   $('tempoBtn').classList.toggle('active',mode==='TEMPO');
   $('faceBtn').classList.toggle('active',mode==='FACE');
 
@@ -852,8 +958,25 @@ function handleMessage(message){
   const parts=message.split(','),type=parts[0];
 
   if(type==='STATE'){
-    if(parts[1]==='ADDRESS'){$('stateText').textContent='Ready — make your putt';setAddressReady(true)}
-    else if(parts[1]==='WAITING'){$('stateText').textContent='Hold still at address';setAddressReady(false)}
+    const state=parts[1];
+
+    if(state==='ADDRESS' || state==='READY'){
+      $('stateText').textContent='Ready — make your putt';
+      setStabilityState('READY');
+    }
+    else if(state==='SETTLING'){
+      $('stateText').textContent='Almost ready — keep the putter still';
+      setStabilityState('SETTLING');
+    }
+    else if(state==='MOVING'){
+      $('stateText').textContent='Putter moving — settle at address';
+      setStabilityState('MOVING');
+    }
+    else if(state==='WAITING'){
+      $('stateText').textContent='Hold still at address';
+      setStabilityState('MOVING');
+    }
+
     return;
   }
 
@@ -864,7 +987,7 @@ function handleMessage(message){
   }
 
   if(type==='CALIBRATION'){
-    setAddressReady(false);
+    setStabilityState('IDLE');
     if(parts[1]==='START'){$('stateText').textContent='Keep putter completely still — calibrating…';$('calibrateBtn').disabled=true}
     else if(parts[1]==='DONE'){$('stateText').textContent='Calibration complete — hold still at address';$('calibrateBtn').disabled=false}
     return;
@@ -936,7 +1059,7 @@ function handleMessage(message){
     return;
   }
 
-  if(type==='ERROR'){setAddressReady(false);$('stateText').textContent='Putt not detected correctly — try again'}
+  if(type==='ERROR'){setStabilityState('MOVING');$('stateText').textContent='Putt not detected correctly — try again'}
 }
 
 async function connect(){
@@ -947,7 +1070,7 @@ async function connect(){
     device=await navigator.bluetooth.requestDevice({filters:[{services:[SERVICE_UUID]}]});
 
     device.addEventListener('gattserverdisconnected',()=>{
-      setConnected(false);setAddressReady(false);showMode(null);
+      setConnected(false);setStabilityState('IDLE');showMode(null);
       $('stateText').textContent='Disconnected';log('Disconnected');
     });
 
@@ -969,7 +1092,7 @@ async function connect(){
     $('stateText').textContent='Connected — choose Tempo or Face';
     log('Connected to '+(device.name||'Putter Analyzer'));
   }catch(err){
-    setAddressReady(false);$('stateText').textContent='Connection failed';log('ERROR: '+err.message);
+    setStabilityState('IDLE');$('stateText').textContent='Connection failed';log('ERROR: '+err.message);
   }
 }
 
