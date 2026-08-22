@@ -107,6 +107,71 @@ button:active{transform:scale(.99)}button:disabled{opacity:.45}
   margin-top:8px;
 }
 
+
+/* Saved session history */
+.historyHeader{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  margin-bottom:12px;
+}
+.historyCount{
+  color:var(--muted);
+  font-size:12px;
+}
+.savedSessionList{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+.savedSession{
+  background:var(--card2);
+  border:1px solid var(--border);
+  border-radius:14px;
+  padding:13px;
+}
+.savedSessionTop{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px;
+}
+.savedSessionMode{
+  font-size:15px;
+  font-weight:800;
+}
+.savedSessionTime{
+  color:var(--muted);
+  font-size:11px;
+  text-align:right;
+  white-space:nowrap;
+}
+.savedSessionSummary{
+  margin-top:7px;
+  color:var(--text);
+  font-size:13px;
+  line-height:1.45;
+}
+.savedSessionDetail{
+  margin-top:4px;
+  color:var(--muted);
+  font-size:12px;
+  line-height:1.4;
+}
+.historyEmpty{
+  color:var(--muted);
+  font-size:13px;
+  padding:4px 0;
+}
+#clearHistoryBtn{
+  background:#21262d;
+  border:1px solid var(--border);
+  padding:9px 11px;
+  border-radius:10px;
+  font-size:12px;
+}
+
 </style>
 </head>
 <body>
@@ -313,6 +378,20 @@ button:active{transform:scale(.99)}button:disabled{opacity:.45}
     <div style="margin-top:12px"><div class="label">Tempo</div><div id="sessionTempo" class="value">—</div></div>
   </div>
 
+  <div id="savedHistoryCard" class="card">
+    <div class="historyHeader">
+      <div>
+        <div class="label">Saved session history</div>
+        <div id="historyCount" class="historyCount">0 sessions saved</div>
+      </div>
+      <button id="clearHistoryBtn" type="button">Clear History</button>
+    </div>
+
+    <div id="savedSessionList" class="savedSessionList">
+      <div class="historyEmpty">Complete a 5-putt Tempo or Face session and it will be saved here.</div>
+    </div>
+  </div>
+
   <div class="card">
     <div class="label">BLE log</div>
     <div id="log" class="history">Waiting for connection…</div>
@@ -334,6 +413,9 @@ let tempoHistory=[];
 let faceHistory=[];
 let faceSessionComplete=false;
 const FACE_SESSION_PUTTS=5;
+
+const SESSION_STORAGE_KEY='putterAnalyzerSessionsV1';
+const MAX_SAVED_SESSIONS=10;
 
 const $=id=>document.getElementById(id);
 
@@ -432,6 +514,136 @@ function updateTempoVisualization(back,forward,ratio){
   });
 }
 
+
+
+function loadSavedSessions(){
+  try{
+    const raw=localStorage.getItem(SESSION_STORAGE_KEY);
+    if(!raw) return [];
+    const parsed=JSON.parse(raw);
+    return Array.isArray(parsed)?parsed:[];
+  }catch(err){
+    log('HISTORY LOAD ERROR: '+err.message);
+    return [];
+  }
+}
+
+function writeSavedSessions(sessions){
+  try{
+    localStorage.setItem(
+      SESSION_STORAGE_KEY,
+      JSON.stringify(sessions.slice(0,MAX_SAVED_SESSIONS))
+    );
+  }catch(err){
+    log('HISTORY SAVE ERROR: '+err.message);
+  }
+}
+
+function formatSessionTime(timestamp){
+  const d=new Date(timestamp);
+  if(Number.isNaN(d.getTime())) return '';
+  return d.toLocaleString([],{
+    month:'short',
+    day:'numeric',
+    hour:'numeric',
+    minute:'2-digit'
+  });
+}
+
+function saveSession(session){
+  const sessions=loadSavedSessions();
+
+  const entry={
+    id:Date.now()+'-'+Math.random().toString(16).slice(2),
+    timestamp:new Date().toISOString(),
+    ...session
+  };
+
+  sessions.unshift(entry);
+  writeSavedSessions(sessions);
+  renderSavedSessions();
+}
+
+function renderSavedSessions(){
+  const sessions=loadSavedSessions();
+  const list=$('savedSessionList');
+
+  $('historyCount').textContent=
+    sessions.length+
+    (sessions.length===1?' session saved':' sessions saved');
+
+  list.innerHTML='';
+
+  if(sessions.length===0){
+    const empty=document.createElement('div');
+    empty.className='historyEmpty';
+    empty.textContent='Complete a 5-putt Tempo or Face session and it will be saved here.';
+    list.appendChild(empty);
+    return;
+  }
+
+  sessions.forEach(session=>{
+    const card=document.createElement('div');
+    card.className='savedSession';
+
+    const top=document.createElement('div');
+    top.className='savedSessionTop';
+
+    const mode=document.createElement('div');
+    mode.className='savedSessionMode';
+    mode.textContent=session.mode==='FACE'?'Face Session':'Tempo Session';
+
+    const time=document.createElement('div');
+    time.className='savedSessionTime';
+    time.textContent=formatSessionTime(session.timestamp);
+
+    top.appendChild(mode);
+    top.appendChild(time);
+
+    const summary=document.createElement('div');
+    summary.className='savedSessionSummary';
+
+    const detail=document.createElement('div');
+    detail.className='savedSessionDetail';
+
+    if(session.mode==='FACE'){
+      summary.textContent=
+        `Average ${Math.abs(session.average).toFixed(2)}° ${session.direction} · `+
+        `Consistency ${Math.round(session.consistency)}/100`;
+
+      detail.textContent=
+        `Spread ${session.stdDev.toFixed(2)}° · ${session.tendency}`;
+    }else{
+      summary.textContent=
+        `Avg tempo ${Number(session.tempoAvg).toFixed(2)} : 1 · `+
+        `Back ${Math.round(session.backAvg)} ms · Forward ${Math.round(session.forwardAvg)} ms`;
+
+      detail.textContent='5-putt tempo session';
+    }
+
+    card.appendChild(top);
+    card.appendChild(summary);
+    card.appendChild(detail);
+    list.appendChild(card);
+  });
+}
+
+function clearSavedHistory(){
+  const sessions=loadSavedSessions();
+
+  if(sessions.length===0) return;
+
+  const ok=window.confirm('Clear all saved putter sessions from this browser?');
+  if(!ok) return;
+
+  try{
+    localStorage.removeItem(SESSION_STORAGE_KEY);
+  }catch(err){
+    log('HISTORY CLEAR ERROR: '+err.message);
+  }
+
+  renderSavedSessions();
+}
 
 function resetFaceSession(){
   faceHistory=[];
@@ -570,6 +782,16 @@ function updateFaceSession(angle){
 
   $('faceSessionCard').classList.remove('hidden');
   faceSessionComplete=true;
+
+  saveSession({
+    mode:'FACE',
+    average:avg,
+    direction:avgDirection,
+    consistency:consistency,
+    stdDev:stdDev,
+    tendency:tendency,
+    putts:[...faceHistory]
+  });
 }
 
 function estimateMakeRangeFeet(faceAngleDegrees){
@@ -695,10 +917,22 @@ function handleMessage(message){
   }
 
   if(type==='SESSION'&&parts.length>=4&&currentMode==='TEMPO'){
+    const backAvg=Number(parts[1]);
+    const forwardAvg=Number(parts[2]);
+    const tempoAvg=Number(parts[3]);
+
     $('sessionCard').classList.remove('hidden');
-    $('sessionBack').textContent=Math.round(Number(parts[1]))+' ms';
-    $('sessionForward').textContent=Math.round(Number(parts[2]))+' ms';
-    $('sessionTempo').textContent=Number(parts[3]).toFixed(2)+' : 1';
+    $('sessionBack').textContent=Math.round(backAvg)+' ms';
+    $('sessionForward').textContent=Math.round(forwardAvg)+' ms';
+    $('sessionTempo').textContent=tempoAvg.toFixed(2)+' : 1';
+
+    saveSession({
+      mode:'TEMPO',
+      backAvg:backAvg,
+      forwardAvg:forwardAvg,
+      tempoAvg:tempoAvg
+    });
+
     return;
   }
 
@@ -744,6 +978,9 @@ $('tempoBtn').addEventListener('click',()=>sendCommand('1'));
 $('faceBtn').addEventListener('click',()=>{resetFaceSession();sendCommand('2')});
 $('calibrateBtn').addEventListener('click',()=>sendCommand('C'));
 $('resetBtn').addEventListener('click',()=>sendCommand('R'));
+$('clearHistoryBtn').addEventListener('click',clearSavedHistory);
+
+renderSavedSessions();
 </script>
 </body>
 </html>
