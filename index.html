@@ -4,319 +4,85 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Putter Analyzer</title>
-
 <style>
 :root{
-  --bg:#0d1117;
-  --card:#161b22;
-  --card2:#0f141b;
-  --text:#f0f6fc;
-  --muted:#8b949e;
-  --accent:#2f81f7;
-  --good:#3fb950;
-  --warn:#d29922;
-  --bad:#f85149;
-  --border:#30363d;
+  --bg:#0d1117;--card:#161b22;--card2:#0f141b;--text:#f0f6fc;--muted:#8b949e;
+  --accent:#2f81f7;--good:#3fb950;--warn:#d29922;--bad:#f85149;--border:#30363d;
 }
-
 *{box-sizing:border-box}
-
-html,body{
-  margin:0;
-  min-height:100%;
-  background:var(--bg);
-}
-
+html,body{margin:0;min-height:100%;background:var(--bg)}
 body{
   font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-  color:var(--text);
-  min-height:100vh;
-  transition:background .2s ease, box-shadow .2s ease;
+  color:var(--text);min-height:100vh;transition:background .2s ease,box-shadow .2s ease
 }
-
 body.address-ready{
   background:#0b1710;
-  box-shadow:
-    inset 0 0 0 7px var(--good),
-    inset 0 0 70px rgba(63,185,80,.20);
+  box-shadow:inset 0 0 0 7px var(--good),inset 0 0 70px rgba(63,185,80,.20)
 }
+.wrap{width:min(560px,100%);margin:0 auto;padding:24px 18px 40px}
+h1{margin:8px 0 2px;font-size:30px}.sub{color:var(--muted);margin-bottom:20px}
+.status{display:flex;align-items:center;gap:10px;padding:12px 14px;border:1px solid var(--border);border-radius:14px;background:var(--card);margin-bottom:14px}
+body.address-ready .status{border-color:var(--good);box-shadow:0 0 0 2px rgba(63,185,80,.18)}
+.dot{width:10px;height:10px;border-radius:50%;background:var(--muted);flex:0 0 auto}.dot.connected{background:var(--good)}
+.readyBadge{display:none;margin-left:auto;font-size:12px;font-weight:800;letter-spacing:.05em;color:var(--good)}
+body.address-ready .readyBadge{display:block}
+button{border:0;border-radius:14px;padding:14px 12px;font-size:16px;font-weight:750;color:white;cursor:pointer}
+button:active{transform:scale(.99)}button:disabled{opacity:.45}
+#connectBtn{width:100%;background:var(--accent);margin-bottom:14px}
+.controls,.utilityControls{display:grid;grid-template-columns:1fr 1fr;gap:10px}.utilityControls{margin:10px 0 20px}
+.modeBtn,.utilityBtn{background:#21262d;border:1px solid var(--border)}.modeBtn.active{background:var(--accent);border-color:var(--accent)}
+.card{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:18px;margin-bottom:14px}
+.label{color:var(--muted);font-size:13px;text-transform:uppercase;letter-spacing:.08em}.big{font-size:46px;font-weight:800;margin:6px 0 2px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px}.mini{background:var(--card2);border:1px solid var(--border);border-radius:14px;padding:14px}
+.value{font-size:22px;font-weight:700;margin-top:4px}.timingStatus{font-size:13px;font-weight:800;margin-top:6px;letter-spacing:.04em}
+.hidden{display:none!important}.pill{display:inline-block;margin-top:10px;padding:7px 10px;border-radius:999px;background:#21262d;font-weight:700}
+.good{color:var(--good)}.warn{color:var(--warn)}.bad{color:var(--bad)}
+.history{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;white-space:pre-wrap;color:var(--muted);max-height:180px;overflow:auto}
+.modeTitle{color:var(--muted);font-size:13px;margin-top:3px}
 
-.wrap{
-  width:min(560px,100%);
-  margin:0 auto;
-  padding:24px 18px 40px;
+/* Tempo visuals */
+.tempoViz{
+  margin-top:16px;padding:14px;background:var(--card2);border:1px solid var(--border);border-radius:14px
 }
+.vizTitle{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px}
+.strokeTrack{position:relative;height:26px;border-radius:999px;overflow:hidden;background:#21262d;display:flex}
+.strokeSeg{height:100%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#0d1117}
+.strokeMeta{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px;font-size:12px;color:var(--muted)}
+.targetRow{margin-top:14px}
+.targetLabel{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:6px}
+.targetScale{position:relative;height:12px;border-radius:999px;background:#21262d}
+.targetGoodZone{position:absolute;top:0;height:100%;border-radius:999px;background:rgba(63,185,80,.35)}
+.targetMarker{position:absolute;top:-4px;width:3px;height:20px;background:var(--text);border-radius:999px}
+.ratioGauge{margin-top:16px}
+.ratioScale{position:relative;height:14px;border-radius:999px;background:#21262d;margin-top:10px}
+.ratioGood{position:absolute;top:0;height:100%;border-radius:999px;background:rgba(63,185,80,.35)}
+.ratioMarker{position:absolute;top:-5px;width:4px;height:24px;background:var(--text);border-radius:999px}
+.ratioTicks{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-top:6px}
+.ratioHistory{position:relative;height:26px;margin-top:6px}
+.ratioDot{position:absolute;top:7px;width:10px;height:10px;border-radius:50%;background:var(--accent);transform:translateX(-50%)}
 
-h1{
-  margin:8px 0 2px;
-  font-size:30px;
-}
-
-.sub{
-  color:var(--muted);
-  margin-bottom:20px;
-}
-
-.status{
-  display:flex;
-  align-items:center;
-  gap:10px;
-  padding:12px 14px;
-  border:1px solid var(--border);
-  border-radius:14px;
-  background:var(--card);
-  margin-bottom:14px;
-}
-
-body.address-ready .status{
-  border-color:var(--good);
-  box-shadow:0 0 0 2px rgba(63,185,80,.18);
-}
-
-.dot{
-  width:10px;
-  height:10px;
-  border-radius:50%;
-  background:var(--muted);
-  flex:0 0 auto;
-}
-
-.dot.connected{
-  background:var(--good);
-}
-
-.readyBadge{
-  display:none;
-  margin-left:auto;
-  font-size:12px;
-  font-weight:800;
-  letter-spacing:.05em;
-  color:var(--good);
-}
-
-body.address-ready .readyBadge{
-  display:block;
-}
-
-button{
-  border:0;
-  border-radius:14px;
-  padding:14px 12px;
-  font-size:16px;
-  font-weight:750;
-  color:white;
-  cursor:pointer;
-}
-
-button:active{
-  transform:scale(.99);
-}
-
-button:disabled{
-  opacity:.45;
-}
-
-#connectBtn{
-  width:100%;
-  background:var(--accent);
-  margin-bottom:14px;
-}
-
-.controls,
-.utilityControls{
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:10px;
-}
-
-.utilityControls{
-  margin:10px 0 20px;
-}
-
-.modeBtn,
-.utilityBtn{
-  background:#21262d;
-  border:1px solid var(--border);
-}
-
-.modeBtn.active{
-  background:var(--accent);
-  border-color:var(--accent);
-}
-
-.card{
-  background:var(--card);
-  border:1px solid var(--border);
-  border-radius:18px;
-  padding:18px;
-  margin-bottom:14px;
-}
-
-.label{
-  color:var(--muted);
-  font-size:13px;
-  text-transform:uppercase;
-  letter-spacing:.08em;
-}
-
-.big{
-  font-size:46px;
-  font-weight:800;
-  margin:6px 0 2px;
-}
-
-.grid{
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:12px;
-  margin-top:14px;
-}
-
-.mini{
-  background:var(--card2);
-  border:1px solid var(--border);
-  border-radius:14px;
-  padding:14px;
-}
-
-.value{
-  font-size:22px;
-  font-weight:700;
-  margin-top:4px;
-}
-
-.timingStatus{
-  font-size:13px;
-  font-weight:800;
-  margin-top:6px;
-  letter-spacing:.04em;
-}
-
-.hidden{
-  display:none !important;
-}
-
-.pill{
-  display:inline-block;
-  margin-top:10px;
-  padding:7px 10px;
-  border-radius:999px;
-  background:#21262d;
-  font-weight:700;
-}
-
-.good{color:var(--good)}
-.warn{color:var(--warn)}
-.bad{color:var(--bad)}
-
-.history{
-  font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
-  font-size:12px;
-  white-space:pre-wrap;
-  color:var(--muted);
-  max-height:180px;
-  overflow:auto;
-}
-
-.modeTitle{
-  color:var(--muted);
-  font-size:13px;
-  margin-top:3px;
-}
-
-.faceVizWrap{
-  margin-top:16px;
-  padding:14px;
-  background:var(--card2);
-  border:1px solid var(--border);
-  border-radius:14px;
-  text-align:center;
-}
-
-.faceVizTitle{
-  color:var(--muted);
-  font-size:12px;
-  text-transform:uppercase;
-  letter-spacing:.08em;
-  margin-bottom:4px;
-}
-
-.faceVizLabel{
-  margin-top:6px;
-  font-size:20px;
-  font-weight:800;
-}
-
-.faceVizSub{
-  color:var(--muted);
-  font-size:12px;
-  margin-top:4px;
-}
-
-.faceLegend{
-  display:flex;
-  justify-content:center;
-  gap:16px;
-  flex-wrap:wrap;
-  margin-top:10px;
-  font-size:12px;
-  color:var(--muted);
-}
-
-.legendItem{
-  display:flex;
-  align-items:center;
-  gap:6px;
-}
-
-.legendSwatch{
-  width:20px;
-  height:4px;
-  border-radius:999px;
-}
-
-.legendTarget{
-  background:#8b949e;
-}
-
-.rangeCard{
-  margin-top:12px;
-  background:var(--card2);
-  border:1px solid var(--border);
-  border-radius:14px;
-  padding:14px;
-}
-
-.rangeValue{
-  font-size:28px;
-  font-weight:800;
-  margin-top:4px;
-}
-
-.rangeNote{
-  color:var(--muted);
-  font-size:12px;
-  line-height:1.4;
-  margin-top:6px;
-}
+/* Face visuals */
+.faceVizWrap{margin-top:16px;padding:14px;background:var(--card2);border:1px solid var(--border);border-radius:14px;text-align:center}
+.faceVizTitle{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px}
+.faceVizLabel{margin-top:6px;font-size:20px;font-weight:800}.faceVizSub{color:var(--muted);font-size:12px;margin-top:4px}
+.faceLegend{display:flex;justify-content:center;gap:16px;flex-wrap:wrap;margin-top:10px;font-size:12px;color:var(--muted)}
+.legendItem{display:flex;align-items:center;gap:6px}.legendSwatch{width:20px;height:4px;border-radius:999px}.legendTarget{background:#8b949e}
+.rangeCard{margin-top:12px;background:var(--card2);border:1px solid var(--border);border-radius:14px;padding:14px}
+.rangeValue{font-size:28px;font-weight:800;margin-top:4px}.rangeNote{color:var(--muted);font-size:12px;line-height:1.4;margin-top:6px}
 </style>
 </head>
-
 <body>
 <div class="wrap">
-
   <h1>Putter Analyzer</h1>
   <div class="sub">Automatic BLE putt feedback</div>
 
   <div class="status">
     <div id="dot" class="dot"></div>
-
     <div>
       <div id="statusText"><strong>Not connected</strong></div>
       <div id="stateText" style="color:var(--muted);font-size:13px">Tap connect to begin</div>
       <div id="modeText" class="modeTitle">Mode: —</div>
     </div>
-
     <div class="readyBadge">READY TO PUTT</div>
   </div>
 
@@ -327,7 +93,6 @@ button:disabled{
       <button id="tempoBtn" class="modeBtn">Tempo</button>
       <button id="faceBtn" class="modeBtn">Face</button>
     </div>
-
     <div class="utilityControls">
       <button id="calibrateBtn" class="utilityBtn">Recalibrate</button>
       <button id="resetBtn" class="utilityBtn">Reset Session</button>
@@ -344,7 +109,6 @@ button:disabled{
         <div id="backTime" class="value">—</div>
         <div id="backStatus" class="timingStatus">—</div>
       </div>
-
       <div class="mini">
         <div class="label">Forward</div>
         <div id="forwardTime" class="value">—</div>
@@ -353,6 +117,57 @@ button:disabled{
     </div>
 
     <div id="tempoRating" class="pill">Waiting</div>
+
+    <div class="tempoViz">
+      <div class="vizTitle">Stroke timing</div>
+
+      <div class="strokeTrack">
+        <div id="backSeg" class="strokeSeg" style="width:62%;background:#3fb950">Back</div>
+        <div id="forwardSeg" class="strokeSeg" style="width:38%;background:#3fb950">Forward</div>
+      </div>
+
+      <div class="strokeMeta">
+        <div id="backVizText">Backswing: —</div>
+        <div id="forwardVizText" style="text-align:right">Forward: —</div>
+      </div>
+
+      <div class="targetRow">
+        <div class="targetLabel">
+          <span>Backswing target</span>
+          <span>600–800 ms</span>
+        </div>
+        <div class="targetScale">
+          <div class="targetGoodZone" style="left:37.5%;width:25%"></div>
+          <div id="backMarker" class="targetMarker" style="left:50%"></div>
+        </div>
+      </div>
+
+      <div class="targetRow">
+        <div class="targetLabel">
+          <span>Forward target</span>
+          <span>300–500 ms</span>
+        </div>
+        <div class="targetScale">
+          <div class="targetGoodZone" style="left:30%;width:40%"></div>
+          <div id="forwardMarker" class="targetMarker" style="left:50%"></div>
+        </div>
+      </div>
+
+      <div class="ratioGauge">
+        <div class="targetLabel">
+          <span>Tempo ratio</span>
+          <span>Good: 1.7–2.1</span>
+        </div>
+        <div class="ratioScale">
+          <div class="ratioGood" style="left:30%;width:40%"></div>
+          <div id="ratioMarker" class="ratioMarker" style="left:50%"></div>
+        </div>
+        <div class="ratioTicks">
+          <span>1.4</span><span>1.7</span><span>1.9</span><span>2.1</span><span>2.4</span>
+        </div>
+        <div id="ratioHistory" class="ratioHistory"></div>
+      </div>
+    </div>
   </div>
 
   <div id="faceCard" class="card hidden">
@@ -363,34 +178,15 @@ button:disabled{
       <div class="faceVizTitle">Projected start line</div>
 
       <svg id="faceSvg" viewBox="0 0 360 220" style="width:100%;max-width:440px;height:auto;display:block;margin:0 auto;">
-        <!-- Labels -->
         <text x="58" y="46" fill="#8b949e" font-size="11" text-anchor="middle">HOLE</text>
         <text x="302" y="46" fill="#8b949e" font-size="11" text-anchor="middle">BALL</text>
 
-        <!-- Ideal gray line: ball to hole (right to left) -->
-        <line
-          x1="302" y1="110"
-          x2="60" y2="110"
-          stroke="#8b949e"
-          stroke-width="5"
-          stroke-linecap="round">
-        </line>
+        <line x1="302" y1="110" x2="60" y2="110" stroke="#8b949e" stroke-width="5" stroke-linecap="round"></line>
+        <line id="faceLine" x1="302" y1="110" x2="60" y2="110" stroke="#3fb950" stroke-width="7" stroke-linecap="round"></line>
 
-        <!-- Actual projected line -->
-        <line
-          id="faceLine"
-          x1="302" y1="110"
-          x2="60" y2="110"
-          stroke="#3fb950"
-          stroke-width="7"
-          stroke-linecap="round">
-        </line>
-
-        <!-- Hole -->
         <circle cx="60" cy="110" r="11" fill="none" stroke="#8b949e" stroke-width="4"></circle>
         <circle cx="60" cy="110" r="3.5" fill="#8b949e"></circle>
 
-        <!-- Ball -->
         <circle cx="302" cy="110" r="8" fill="#f0f6fc"></circle>
         <circle cx="302" cy="110" r="3" fill="#0d1117"></circle>
       </svg>
@@ -399,36 +195,20 @@ button:disabled{
       <div id="faceVizSub" class="faceVizSub">Ball rolls right → left toward the hole</div>
 
       <div class="faceLegend">
-        <div class="legendItem">
-          <div class="legendSwatch legendTarget"></div>
-          <span>Ideal start line</span>
-        </div>
-
-        <div class="legendItem">
-          <div id="actualLegend" class="legendSwatch" style="background:#3fb950"></div>
-          <span>Actual start line</span>
-        </div>
+        <div class="legendItem"><div class="legendSwatch legendTarget"></div><span>Ideal start line</span></div>
+        <div class="legendItem"><div id="actualLegend" class="legendSwatch" style="background:#3fb950"></div><span>Actual start line</span></div>
       </div>
 
       <div class="rangeCard">
         <div class="label">Estimated straight-putt make range</div>
         <div id="makeRange" class="rangeValue">—</div>
-        <div id="rangeNote" class="rangeNote">
-          Assumes a flat straight putt, centered strike, and correct speed.
-        </div>
+        <div id="rangeNote" class="rangeNote">Assumes a flat straight putt, centered strike, and correct speed.</div>
       </div>
     </div>
 
     <div class="grid">
-      <div class="mini">
-        <div class="label">Transition</div>
-        <div id="faceTransition" class="value">—</div>
-      </div>
-
-      <div class="mini">
-        <div class="label">Direction</div>
-        <div id="faceDirection" class="value">—</div>
-      </div>
+      <div class="mini"><div class="label">Transition</div><div id="faceTransition" class="value">—</div></div>
+      <div class="mini"><div class="label">Direction</div><div id="faceDirection" class="value">—</div></div>
     </div>
 
     <div id="faceRating" class="pill">Waiting</div>
@@ -436,30 +216,17 @@ button:disabled{
 
   <div id="sessionCard" class="card hidden">
     <div class="label">5-putt session average</div>
-
     <div class="grid">
-      <div class="mini">
-        <div class="label">Backswing</div>
-        <div id="sessionBack" class="value">—</div>
-      </div>
-
-      <div class="mini">
-        <div class="label">Forward</div>
-        <div id="sessionForward" class="value">—</div>
-      </div>
+      <div class="mini"><div class="label">Backswing</div><div id="sessionBack" class="value">—</div></div>
+      <div class="mini"><div class="label">Forward</div><div id="sessionForward" class="value">—</div></div>
     </div>
-
-    <div style="margin-top:12px">
-      <div class="label">Tempo</div>
-      <div id="sessionTempo" class="value">—</div>
-    </div>
+    <div style="margin-top:12px"><div class="label">Tempo</div><div id="sessionTempo" class="value">—</div></div>
   </div>
 
   <div class="card">
     <div class="label">BLE log</div>
     <div id="log" class="history">Waiting for connection…</div>
   </div>
-
 </div>
 
 <script>
@@ -467,20 +234,13 @@ const SERVICE_UUID='12345678-1234-1234-1234-1234567890ab';
 const RESULT_UUID='12345678-1234-1234-1234-1234567890ac';
 const COMMAND_UUID='12345678-1234-1234-1234-1234567890ad';
 
-const BACKSWING_MIN=600;
-const BACKSWING_MAX=800;
-const FORWARD_MIN=300;
-const FORWARD_MAX=500;
-
-const HOLE_DIAMETER_IN=4.25;
-const BALL_DIAMETER_IN=1.68;
+const BACKSWING_MIN=600,BACKSWING_MAX=800,FORWARD_MIN=300,FORWARD_MAX=500;
+const HOLE_DIAMETER_IN=4.25,BALL_DIAMETER_IN=1.68;
 const EFFECTIVE_TOLERANCE_IN=(HOLE_DIAMETER_IN-BALL_DIAMETER_IN)/2;
 const START_LINE_FACE_FACTOR=0.85;
 
-let device;
-let resultCharacteristic;
-let commandCharacteristic;
-let currentMode=null;
+let device,resultCharacteristic,commandCharacteristic,currentMode=null;
+let tempoHistory=[];
 
 const $=id=>document.getElementById(id);
 
@@ -496,14 +256,11 @@ function setConnected(on){
   $('phoneControls').classList.toggle('hidden',!on);
 }
 
-function setAddressReady(ready){
-  document.body.classList.toggle('address-ready',ready);
-}
+function setAddressReady(ready){document.body.classList.toggle('address-ready',ready)}
 
 function showMode(mode){
   currentMode=mode;
   setAddressReady(false);
-
   $('tempoBtn').classList.toggle('active',mode==='TEMPO');
   $('faceBtn').classList.toggle('active',mode==='FACE');
 
@@ -512,19 +269,14 @@ function showMode(mode){
     $('tempoCard').classList.remove('hidden');
     $('faceCard').classList.add('hidden');
     $('resetBtn').disabled=false;
-
-    if($('sessionTempo').textContent!=='—'){
-      $('sessionCard').classList.remove('hidden');
-    }
-  }
-  else if(mode==='FACE'){
+    if($('sessionTempo').textContent!=='—') $('sessionCard').classList.remove('hidden');
+  }else if(mode==='FACE'){
     $('modeText').textContent='Mode: Face Angle';
     $('faceCard').classList.remove('hidden');
     $('tempoCard').classList.add('hidden');
     $('sessionCard').classList.add('hidden');
     $('resetBtn').disabled=true;
-  }
-  else{
+  }else{
     $('modeText').textContent='Mode: —';
     $('tempoCard').classList.add('hidden');
     $('faceCard').classList.add('hidden');
@@ -533,126 +285,101 @@ function showMode(mode){
   }
 }
 
-function tempoClass(r){
-  if(r>=1.7&&r<=2.1) return ['GOOD TEMPO','good'];
-  if(r<1.7) return ['LOW RATIO','warn'];
-  return ['HIGH RATIO','warn'];
+function tempoClass(r){if(r>=1.7&&r<=2.1)return['GOOD TEMPO','good'];if(r<1.7)return['LOW RATIO','warn'];return['HIGH RATIO','warn']}
+function timingClass(v,min,max){if(v<min)return['FAST','warn'];if(v>max)return['SLOW','warn'];return['GOOD','good']}
+function faceClass(v){const a=Math.abs(v);if(a<=1)return['EXCELLENT','good'];if(a<=2)return['GOOD','good'];if(a<=4)return['NEEDS WORK','warn'];return['POOR','bad']}
+
+function timingColor(value,min,max){
+  if(value>=min && value<=max) return '#3fb950';
+  const spread=max-min;
+  if(value<min-spread*0.5 || value>max+spread*0.5) return '#f85149';
+  return '#d29922';
 }
 
-function timingClass(value,min,max){
-  if(value<min) return ['FAST','warn'];
-  if(value>max) return ['SLOW','warn'];
-  return ['GOOD','good'];
-}
+function clampPct(v){return Math.max(0,Math.min(100,v))}
 
-function faceClass(v){
-  const a=Math.abs(v);
-  if(a<=1.0) return ['EXCELLENT','good'];
-  if(a<=2.0) return ['GOOD','good'];
-  if(a<=4.0) return ['NEEDS WORK','warn'];
-  return ['POOR','bad'];
+function updateTempoVisualization(back,forward,ratio){
+  const total=Math.max(1,back+forward);
+  const backPct=(back/total)*100;
+  const forwardPct=100-backPct;
+
+  $('backSeg').style.width=backPct+'%';
+  $('forwardSeg').style.width=forwardPct+'%';
+  $('backSeg').style.background=timingColor(back,BACKSWING_MIN,BACKSWING_MAX);
+  $('forwardSeg').style.background=timingColor(forward,FORWARD_MIN,FORWARD_MAX);
+
+  $('backVizText').textContent=`Backswing: ${back} ms`;
+  $('forwardVizText').textContent=`Forward: ${forward} ms`;
+
+  // backswing scale 300–1100 ms
+  const backPos=clampPct((back-300)/(1100-300)*100);
+  $('backMarker').style.left=backPos+'%';
+
+  // forward scale 150–650 ms
+  const forwardPos=clampPct((forward-150)/(650-150)*100);
+  $('forwardMarker').style.left=forwardPos+'%';
+
+  // ratio scale 1.4–2.4
+  const ratioPos=clampPct((ratio-1.4)/(2.4-1.4)*100);
+  $('ratioMarker').style.left=ratioPos+'%';
+
+  tempoHistory.push(ratio);
+  if(tempoHistory.length>5) tempoHistory.shift();
+
+  $('ratioHistory').innerHTML='';
+  tempoHistory.forEach((r,i)=>{
+    const dot=document.createElement('div');
+    dot.className='ratioDot';
+    dot.style.left=clampPct((r-1.4)/(2.4-1.4)*100)+'%';
+    dot.style.opacity=String(0.45+0.11*i);
+    $('ratioHistory').appendChild(dot);
+  });
 }
 
 function estimateMakeRangeFeet(faceAngleDegrees){
   const startLineAngle=Math.abs(faceAngleDegrees)*START_LINE_FACE_FACTOR;
-
-  if(startLineAngle < 0.05){
-    return {
-      text:'20+ ft',
-      note:'Face angle is very close to square. This estimate is effectively long-range.'
-    };
-  }
+  if(startLineAngle<0.05) return {text:'20+ ft',note:'Face angle is very close to square.'};
 
   const theta=startLineAngle*Math.PI/180;
   const distanceInches=EFFECTIVE_TOLERANCE_IN/Math.tan(theta);
   const distanceFeet=distanceInches/12;
 
-  if(!isFinite(distanceFeet) || distanceFeet<=0){
-    return {
-      text:'—',
-      note:'Could not estimate make range.'
-    };
-  }
-
-  if(distanceFeet >= 20){
-    return {
-      text:'20+ ft',
-      note:`Using ~${START_LINE_FACE_FACTOR.toFixed(2)}× face angle as start-line angle.`
-    };
-  }
-
-  if(distanceFeet < 1){
-    return {
-      text:'< 1 ft',
-      note:`Using ~${START_LINE_FACE_FACTOR.toFixed(2)}× face angle as start-line angle.`
-    };
-  }
-
-  return {
-    text:`${distanceFeet.toFixed(1)} ft`,
-    note:`Using ~${START_LINE_FACE_FACTOR.toFixed(2)}× face angle as start-line angle.`
-  };
+  if(!isFinite(distanceFeet)||distanceFeet<=0) return {text:'—',note:'Could not estimate make range.'};
+  if(distanceFeet>=20) return {text:'20+ ft',note:`Using ~${START_LINE_FACE_FACTOR.toFixed(2)}× face angle as start-line angle.`};
+  if(distanceFeet<1) return {text:'< 1 ft',note:`Using ~${START_LINE_FACE_FACTOR.toFixed(2)}× face angle as start-line angle.`};
+  return {text:`${distanceFeet.toFixed(1)} ft`,note:`Using ~${START_LINE_FACE_FACTOR.toFixed(2)}× face angle as start-line angle.`};
 }
 
 function updateFaceVisualization(angle,direction){
   const absAngle=Math.abs(angle);
-
   let color='#3fb950';
-  if(absAngle>1.0 && absAngle<=4.0) color='#d29922';
-  else if(absAngle>4.0) color='#f85149';
+  if(absAngle>1&&absAngle<=4) color='#d29922';
+  else if(absAngle>4) color='#f85149';
 
-  const MAX_REAL_ANGLE=5.0;
-  const MAX_VISUAL_ANGLE=28.0;
+  const MAX_REAL_ANGLE=5.0,MAX_VISUAL_ANGLE=28.0;
   const clamped=Math.max(-MAX_REAL_ANGLE,Math.min(MAX_REAL_ANGLE,angle));
-
-  /*
-    Visualization is BALL on right -> HOLE on left.
-
-    negative face angle = OPEN  -> line should end ABOVE the gray line
-    positive face angle = CLOSED -> line should end BELOW the gray line
-  */
   const displayAngle=-(clamped/MAX_REAL_ANGLE)*MAX_VISUAL_ANGLE;
   const radians=displayAngle*Math.PI/180;
 
-  const startX=302;
-  const startY=110;
-  const targetX=60;
-  const length=startX-targetX;
+  const startX=302,startY=110,targetX=60,length=startX-targetX;
+  const lineX2=startX-length*Math.cos(radians);
+  const lineY2=startY-length*Math.sin(radians);
 
-  const lineX2=startX - length*Math.cos(radians);
-  const lineY2=startY - length*Math.sin(radians);
-
-  $('faceLine').setAttribute('x2', lineX2);
-  $('faceLine').setAttribute('y2', lineY2);
-  $('faceLine').setAttribute('stroke', color);
+  $('faceLine').setAttribute('x2',lineX2);
+  $('faceLine').setAttribute('y2',lineY2);
+  $('faceLine').setAttribute('stroke',color);
   $('actualLegend').style.background=color;
 
-  if(absAngle<0.05){
-    $('faceVizLabel').textContent='0.00° SQUARE';
-  }else{
-    $('faceVizLabel').textContent=`${absAngle.toFixed(2)}° ${direction}`;
-  }
-
-  if(direction === 'OPEN'){
-    $('faceVizSub').textContent='Ball rolls right → left and finishes ABOVE the target line';
-  }else if(direction === 'CLOSED'){
-    $('faceVizSub').textContent='Ball rolls right → left and finishes BELOW the target line';
-  }else{
-    $('faceVizSub').textContent='Ball rolls right → left toward the hole';
-  }
+  $('faceVizLabel').textContent=absAngle<0.05?'0.00° SQUARE':`${absAngle.toFixed(2)}° ${direction}`;
+  $('faceVizSub').textContent='Ball rolls right → left toward the hole';
 
   const makeRange=estimateMakeRangeFeet(angle);
   $('makeRange').textContent=makeRange.text;
-  $('rangeNote').textContent=
-    makeRange.note + ' Assumes a flat straight putt, centered strike, and correct speed.';
+  $('rangeNote').textContent=makeRange.note+' Assumes a flat straight putt, centered strike, and correct speed.';
 }
 
 async function sendCommand(command){
-  if(!device || !device.gatt.connected || !commandCharacteristic){
-    $('stateText').textContent='Connect to putter first';
-    return;
-  }
-
+  if(!device||!device.gatt.connected||!commandCharacteristic){$('stateText').textContent='Connect to putter first';return}
   try{
     await commandCharacteristic.writeValue(new TextEncoder().encode(command));
     log('COMMAND -> '+command);
@@ -664,80 +391,60 @@ async function sendCommand(command){
 
 function handleMessage(message){
   log(message);
-
-  const parts=message.split(',');
-  const type=parts[0];
+  const parts=message.split(','),type=parts[0];
 
   if(type==='STATE'){
-    if(parts[1]==='ADDRESS'){
-      $('stateText').textContent='Ready — make your putt';
-      setAddressReady(true);
-    }else if(parts[1]==='WAITING'){
-      $('stateText').textContent='Hold still at address';
-      setAddressReady(false);
-    }
+    if(parts[1]==='ADDRESS'){$('stateText').textContent='Ready — make your putt';setAddressReady(true)}
+    else if(parts[1]==='WAITING'){$('stateText').textContent='Hold still at address';setAddressReady(false)}
     return;
   }
 
   if(type==='MODE'){
     showMode(parts[1]);
-    $('stateText').textContent=parts[1]==='MENU' ? 'Select a mode' : 'Hold still at address';
+    $('stateText').textContent=parts[1]==='MENU'?'Select a mode':'Hold still at address';
     return;
   }
 
   if(type==='CALIBRATION'){
     setAddressReady(false);
-
-    if(parts[1]==='START'){
-      $('stateText').textContent='Keep putter completely still — calibrating…';
-      $('calibrateBtn').disabled=true;
-    }else if(parts[1]==='DONE'){
-      $('stateText').textContent='Calibration complete — hold still at address';
-      $('calibrateBtn').disabled=false;
-    }
+    if(parts[1]==='START'){$('stateText').textContent='Keep putter completely still — calibrating…';$('calibrateBtn').disabled=true}
+    else if(parts[1]==='DONE'){$('stateText').textContent='Calibration complete — hold still at address';$('calibrateBtn').disabled=false}
     return;
   }
 
-  if(type==='TEMPO' && parts[1]==='RESET'){
+  if(type==='TEMPO'&&parts[1]==='RESET'){
+    tempoHistory=[];
+    $('ratioHistory').innerHTML='';
     $('sessionCard').classList.add('hidden');
-    $('sessionBack').textContent='—';
-    $('sessionForward').textContent='—';
-    $('sessionTempo').textContent='—';
+    $('sessionBack').textContent='—';$('sessionForward').textContent='—';$('sessionTempo').textContent='—';
     $('stateText').textContent='Session reset — hold still at address';
     return;
   }
 
-  if(type==='TEMPO' && parts.length>=4){
+  if(type==='TEMPO'&&parts.length>=4){
     showMode('TEMPO');
-
-    const back=Number(parts[1]);
-    const forward=Number(parts[2]);
-    const ratio=Number(parts[3]);
+    const back=Number(parts[1]),forward=Number(parts[2]),ratio=Number(parts[3]);
 
     $('tempoRatio').textContent=ratio.toFixed(2)+' : 1';
     $('backTime').textContent=back+' ms';
     $('forwardTime').textContent=forward+' ms';
 
     let result=timingClass(back,BACKSWING_MIN,BACKSWING_MAX);
-    $('backStatus').textContent=result[0];
-    $('backStatus').className='timingStatus '+result[1];
+    $('backStatus').textContent=result[0];$('backStatus').className='timingStatus '+result[1];
 
     result=timingClass(forward,FORWARD_MIN,FORWARD_MAX);
-    $('forwardStatus').textContent=result[0];
-    $('forwardStatus').className='timingStatus '+result[1];
+    $('forwardStatus').textContent=result[0];$('forwardStatus').className='timingStatus '+result[1];
 
     result=tempoClass(ratio);
-    $('tempoRating').textContent=result[0];
-    $('tempoRating').className='pill '+result[1];
+    $('tempoRating').textContent=result[0];$('tempoRating').className='pill '+result[1];
+
+    updateTempoVisualization(back,forward,ratio);
     return;
   }
 
-  if(type==='FACE' && parts.length>=4){
+  if(type==='FACE'&&parts.length>=4){
     showMode('FACE');
-
-    const transition=Number(parts[1]);
-    const impact=Number(parts[2]);
-    const direction=parts[3];
+    const transition=Number(parts[1]),impact=Number(parts[2]),direction=parts[3];
 
     $('faceImpact').textContent=Math.abs(impact).toFixed(2)+'°';
     $('faceTransition').textContent=Math.abs(transition).toFixed(2)+'°';
@@ -746,12 +453,11 @@ function handleMessage(message){
     updateFaceVisualization(impact,direction);
 
     const result=faceClass(impact);
-    $('faceRating').textContent=result[0];
-    $('faceRating').className='pill '+result[1];
+    $('faceRating').textContent=result[0];$('faceRating').className='pill '+result[1];
     return;
   }
 
-  if(type==='SESSION' && parts.length>=4 && currentMode==='TEMPO'){
+  if(type==='SESSION'&&parts.length>=4&&currentMode==='TEMPO'){
     $('sessionCard').classList.remove('hidden');
     $('sessionBack').textContent=Math.round(Number(parts[1]))+' ms';
     $('sessionForward').textContent=Math.round(Number(parts[2]))+' ms';
@@ -759,35 +465,22 @@ function handleMessage(message){
     return;
   }
 
-  if(type==='ERROR'){
-    setAddressReady(false);
-    $('stateText').textContent='Putt not detected correctly — try again';
-  }
+  if(type==='ERROR'){setAddressReady(false);$('stateText').textContent='Putt not detected correctly — try again'}
 }
 
 async function connect(){
   try{
-    if(!navigator.bluetooth){
-      alert('Web Bluetooth is not available in this browser.');
-      return;
-    }
-
+    if(!navigator.bluetooth){alert('Web Bluetooth is not available in this browser.');return}
     $('stateText').textContent='Choose Putter Analyzer…';
 
-    device=await navigator.bluetooth.requestDevice({
-      filters:[{services:[SERVICE_UUID]}]
-    });
+    device=await navigator.bluetooth.requestDevice({filters:[{services:[SERVICE_UUID]}]});
 
-    device.addEventListener('gattserverdisconnected', ()=>{
-      setConnected(false);
-      setAddressReady(false);
-      showMode(null);
-      $('stateText').textContent='Disconnected';
-      log('Disconnected');
+    device.addEventListener('gattserverdisconnected',()=>{
+      setConnected(false);setAddressReady(false);showMode(null);
+      $('stateText').textContent='Disconnected';log('Disconnected');
     });
 
     $('stateText').textContent='Connecting…';
-
     const server=await device.gatt.connect();
     const service=await server.getPrimaryService(SERVICE_UUID);
 
@@ -796,31 +489,24 @@ async function connect(){
 
     await resultCharacteristic.startNotifications();
 
-    resultCharacteristic.addEventListener('characteristicvaluechanged', event=>{
-      const message=new TextDecoder('utf-8')
-        .decode(event.target.value)
-        .replace(/\0/g,'')
-        .trim();
-
-      if(message) handleMessage(message);
+    resultCharacteristic.addEventListener('characteristicvaluechanged',event=>{
+      const message=new TextDecoder('utf-8').decode(event.target.value).replace(/\0/g,'').trim();
+      if(message)handleMessage(message);
     });
 
-    setConnected(true);
-    showMode(null);
+    setConnected(true);showMode(null);
     $('stateText').textContent='Connected — choose Tempo or Face';
     log('Connected to '+(device.name||'Putter Analyzer'));
   }catch(err){
-    setAddressReady(false);
-    $('stateText').textContent='Connection failed';
-    log('ERROR: '+err.message);
+    setAddressReady(false);$('stateText').textContent='Connection failed';log('ERROR: '+err.message);
   }
 }
 
-$('connectBtn').addEventListener('click', connect);
-$('tempoBtn').addEventListener('click', ()=>sendCommand('1'));
-$('faceBtn').addEventListener('click', ()=>sendCommand('2'));
-$('calibrateBtn').addEventListener('click', ()=>sendCommand('C'));
-$('resetBtn').addEventListener('click', ()=>sendCommand('R'));
+$('connectBtn').addEventListener('click',connect);
+$('tempoBtn').addEventListener('click',()=>sendCommand('1'));
+$('faceBtn').addEventListener('click',()=>sendCommand('2'));
+$('calibrateBtn').addEventListener('click',()=>sendCommand('C'));
+$('resetBtn').addEventListener('click',()=>sendCommand('R'));
 </script>
 </body>
 </html>
