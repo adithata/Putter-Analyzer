@@ -224,9 +224,9 @@ button:disabled{
   margin-top:3px;
 }
 
-/* ====================================================
-   FACE VISUALIZATION
-==================================================== */
+/* =========================
+   PROJECTED START LINE
+========================= */
 
 .faceVizWrap{
   margin-top:16px;
@@ -242,22 +242,13 @@ button:disabled{
   font-size:12px;
   text-transform:uppercase;
   letter-spacing:.08em;
-  margin-bottom:6px;
-}
-
-.faceSvg{
-  width:100%;
-  max-width:270px;
-  height:auto;
-  display:block;
-  margin:0 auto;
+  margin-bottom:4px;
 }
 
 .faceVizLabel{
-  margin-top:8px;
-  font-size:14px;
-  color:var(--muted);
-  font-weight:700;
+  margin-top:4px;
+  font-size:20px;
+  font-weight:800;
 }
 
 .faceLegend{
@@ -284,10 +275,6 @@ button:disabled{
 
 .legendTarget{
   background:#8b949e;
-}
-
-.legendActual{
-  background:var(--good);
 }
 </style>
 </head>
@@ -326,11 +313,6 @@ button:disabled{
 
   </div>
 
-
-  <!-- ==================================================
-       TEMPO MODE
-  =================================================== -->
-
   <div id="tempoCard" class="card hidden">
 
     <div class="label">Tempo</div>
@@ -357,72 +339,62 @@ button:disabled{
 
   </div>
 
-
-  <!-- ==================================================
-       FACE MODE
-  =================================================== -->
-
   <div id="faceCard" class="card hidden">
 
     <div class="label">Face at impact</div>
 
     <div id="faceImpact" class="big">—</div>
 
-    <!-- FACE VISUAL -->
     <div class="faceVizWrap">
 
       <div class="faceVizTitle">
-        Face angle at impact
+        Projected start line
       </div>
 
       <svg
         id="faceSvg"
-        viewBox="0 0 220 220"
-        class="faceSvg"
-        aria-label="Putter face angle visualization"
+        viewBox="0 0 340 220"
+        style="width:100%;max-width:420px;height:auto;display:block;margin:0 auto;"
       >
 
-        <!-- Outer guide circle -->
-        <circle
-          cx="110"
-          cy="110"
-          r="82"
-          fill="none"
-          stroke="#21262d"
-          stroke-width="2"
-        ></circle>
-
-        <!-- Center point -->
-        <circle
-          cx="110"
-          cy="110"
-          r="5"
-          fill="#8b949e"
-        ></circle>
-
-        <!-- Square / optimal line -->
+        <!-- Perfect start line -->
         <line
-          x1="110"
-          y1="28"
-          x2="110"
-          y2="192"
+          x1="70"
+          y1="110"
+          x2="285"
+          y2="110"
           stroke="#8b949e"
           stroke-width="5"
           stroke-linecap="round"
         ></line>
 
-        <!-- Actual face line -->
+        <!-- Actual projected start line -->
         <line
           id="faceLine"
-          x1="110"
-          y1="28"
-          x2="110"
-          y2="192"
+          x1="70"
+          y1="110"
+          x2="285"
+          y2="110"
           stroke="#3fb950"
           stroke-width="7"
           stroke-linecap="round"
-          transform="rotate(0 110 110)"
         ></line>
+
+        <!-- Ball / origin -->
+        <circle
+          cx="70"
+          cy="110"
+          r="7"
+          fill="#f0f6fc"
+        ></circle>
+
+        <!-- Ideal target point -->
+        <circle
+          cx="285"
+          cy="110"
+          r="4"
+          fill="#8b949e"
+        ></circle>
 
       </svg>
 
@@ -434,12 +406,12 @@ button:disabled{
 
         <div class="legendItem">
           <div class="legendSwatch legendTarget"></div>
-          <span>Square 0°</span>
+          <span>Ideal line</span>
         </div>
 
         <div class="legendItem">
-          <div id="actualLegend" class="legendSwatch legendActual"></div>
-          <span>Actual face</span>
+          <div id="actualLegend" class="legendSwatch" style="background:#3fb950"></div>
+          <span>Projected line</span>
         </div>
 
       </div>
@@ -463,11 +435,6 @@ button:disabled{
     <div id="faceRating" class="pill">Waiting</div>
 
   </div>
-
-
-  <!-- ==================================================
-       SESSION SUMMARY
-  =================================================== -->
 
   <div id="sessionCard" class="card hidden">
 
@@ -494,907 +461,396 @@ button:disabled{
 
   </div>
 
-
-  <!-- ==================================================
-       BLE LOG
-  =================================================== -->
-
   <div class="card">
-
     <div class="label">BLE log</div>
-
-    <div id="log" class="history">
-Waiting for connection…
-    </div>
-
+    <div id="log" class="history">Waiting for connection…</div>
   </div>
 
 </div>
 
-
 <script>
+const SERVICE_UUID='12345678-1234-1234-1234-1234567890ab';
+const RESULT_UUID='12345678-1234-1234-1234-1234567890ac';
+const COMMAND_UUID='12345678-1234-1234-1234-1234567890ad';
 
-// ======================================================
-// BLE UUIDs
-// ======================================================
-
-const SERVICE_UUID =
-  '12345678-1234-1234-1234-1234567890ab';
-
-const RESULT_UUID =
-  '12345678-1234-1234-1234-1234567890ac';
-
-const COMMAND_UUID =
-  '12345678-1234-1234-1234-1234567890ad';
-
-
-// ======================================================
-// TEMPO TARGETS
-// ======================================================
-
-const BACKSWING_MIN = 600;
-const BACKSWING_MAX = 800;
-
-const FORWARD_MIN = 300;
-const FORWARD_MAX = 500;
-
-
-// ======================================================
-// BLE VARIABLES
-// ======================================================
+const BACKSWING_MIN=600;
+const BACKSWING_MAX=800;
+const FORWARD_MIN=300;
+const FORWARD_MAX=500;
 
 let device;
 let resultCharacteristic;
 let commandCharacteristic;
+let currentMode=null;
 
-let currentMode = null;
-
-
-const $ = id =>
-  document.getElementById(id);
-
-
-// ======================================================
-// LOG
-// ======================================================
+const $=id=>document.getElementById(id);
 
 function log(msg){
-
-  const t =
-    new Date().toLocaleTimeString();
-
-  $('log').textContent =
-    `[${t}] ${msg}\n` +
-    $('log').textContent;
+  const t=new Date().toLocaleTimeString();
+  $('log').textContent=`[${t}] ${msg}\n`+$('log').textContent;
 }
-
-
-// ======================================================
-// CONNECTION UI
-// ======================================================
 
 function setConnected(on){
-
-  $('dot').classList.toggle(
-    'connected',
-    on
-  );
-
-  $('statusText').innerHTML =
-    on
-      ? '<strong>Connected</strong>'
-      : '<strong>Not connected</strong>';
-
-  $('connectBtn').textContent =
-    on
-      ? 'Connected to Putter'
-      : 'Connect to Putter';
-
-  $('phoneControls').classList.toggle(
-    'hidden',
-    !on
-  );
+  $('dot').classList.toggle('connected',on);
+  $('statusText').innerHTML=on?'<strong>Connected</strong>':'<strong>Not connected</strong>';
+  $('connectBtn').textContent=on?'Connected to Putter':'Connect to Putter';
+  $('phoneControls').classList.toggle('hidden',!on);
 }
-
-
-// ======================================================
-// READY STATE
-// ======================================================
 
 function setAddressReady(ready){
-
-  document.body.classList.toggle(
-    'address-ready',
-    ready
-  );
+  document.body.classList.toggle('address-ready',ready);
 }
-
-
-// ======================================================
-// MODE UI
-// ======================================================
 
 function showMode(mode){
-
-  currentMode =
-    mode;
-
+  currentMode=mode;
   setAddressReady(false);
 
+  $('tempoBtn').classList.toggle('active',mode==='TEMPO');
+  $('faceBtn').classList.toggle('active',mode==='FACE');
 
-  $('tempoBtn').classList.toggle(
-    'active',
-    mode === 'TEMPO'
-  );
+  if(mode==='TEMPO'){
+    $('modeText').textContent='Mode: Tempo + Consistency';
+    $('tempoCard').classList.remove('hidden');
+    $('faceCard').classList.add('hidden');
+    $('resetBtn').disabled=false;
 
-
-  $('faceBtn').classList.toggle(
-    'active',
-    mode === 'FACE'
-  );
-
-
-  if(mode === 'TEMPO'){
-
-    $('modeText').textContent =
-      'Mode: Tempo + Consistency';
-
-    $('tempoCard').classList.remove(
-      'hidden'
-    );
-
-    $('faceCard').classList.add(
-      'hidden'
-    );
-
-    $('resetBtn').disabled =
-      false;
-
-
-    if(
-      $('sessionTempo').textContent !== '—'
-    ){
-
-      $('sessionCard').classList.remove(
-        'hidden'
-      );
+    if($('sessionTempo').textContent!=='—'){
+      $('sessionCard').classList.remove('hidden');
     }
   }
-
-
-  else if(mode === 'FACE'){
-
-    $('modeText').textContent =
-      'Mode: Face Angle';
-
-    $('faceCard').classList.remove(
-      'hidden'
-    );
-
-    $('tempoCard').classList.add(
-      'hidden'
-    );
-
-    $('sessionCard').classList.add(
-      'hidden'
-    );
-
-    $('resetBtn').disabled =
-      true;
+  else if(mode==='FACE'){
+    $('modeText').textContent='Mode: Face Angle';
+    $('faceCard').classList.remove('hidden');
+    $('tempoCard').classList.add('hidden');
+    $('sessionCard').classList.add('hidden');
+    $('resetBtn').disabled=true;
   }
-
-
   else{
-
-    $('modeText').textContent =
-      'Mode: —';
-
-    $('tempoCard').classList.add(
-      'hidden'
-    );
-
-    $('faceCard').classList.add(
-      'hidden'
-    );
-
-    $('sessionCard').classList.add(
-      'hidden'
-    );
-
-    $('resetBtn').disabled =
-      true;
+    $('modeText').textContent='Mode: —';
+    $('tempoCard').classList.add('hidden');
+    $('faceCard').classList.add('hidden');
+    $('sessionCard').classList.add('hidden');
+    $('resetBtn').disabled=true;
   }
 }
-
-
-// ======================================================
-// TEMPO CLASSIFICATION
-// ======================================================
 
 function tempoClass(r){
-
-  if(
-    r >= 1.7 &&
-    r <= 2.1
-  ){
-
-    return [
-      'GOOD TEMPO',
-      'good'
-    ];
-  }
-
-
-  if(r < 1.7){
-
-    return [
-      'LOW RATIO',
-      'warn'
-    ];
-  }
-
-
-  return [
-    'HIGH RATIO',
-    'warn'
-  ];
+  if(r>=1.7&&r<=2.1) return ['GOOD TEMPO','good'];
+  if(r<1.7) return ['LOW RATIO','warn'];
+  return ['HIGH RATIO','warn'];
 }
 
-
-function timingClass(
-  value,
-  min,
-  max
-){
-
-  if(value < min){
-
-    return [
-      'FAST',
-      'warn'
-    ];
-  }
-
-
-  if(value > max){
-
-    return [
-      'SLOW',
-      'warn'
-    ];
-  }
-
-
-  return [
-    'GOOD',
-    'good'
-  ];
+function timingClass(value,min,max){
+  if(value<min) return ['FAST','warn'];
+  if(value>max) return ['SLOW','warn'];
+  return ['GOOD','good'];
 }
-
-
-// ======================================================
-// FACE CLASSIFICATION
-// ======================================================
 
 function faceClass(v){
-
-  const a =
-    Math.abs(v);
-
-
-  if(a <= 1.0){
-
-    return [
-      'EXCELLENT',
-      'good'
-    ];
-  }
-
-
-  if(a <= 2.0){
-
-    return [
-      'GOOD',
-      'good'
-    ];
-  }
-
-
-  if(a <= 4.0){
-
-    return [
-      'NEEDS WORK',
-      'warn'
-    ];
-  }
-
-
-  return [
-    'POOR',
-    'bad'
-  ];
+  const a=Math.abs(v);
+  if(a<=1.0) return ['EXCELLENT','good'];
+  if(a<=2.0) return ['GOOD','good'];
+  if(a<=4.0) return ['NEEDS WORK','warn'];
+  return ['POOR','bad'];
 }
 
+function updateFaceVisualization(angle,direction){
 
-// ======================================================
-// FACE VISUALIZATION
-// ======================================================
+  const absAngle=Math.abs(angle);
 
-function updateFaceVisualization(
-  angle,
-  direction
-){
+  let color='#3fb950';
 
-  const faceLine =
-    $('faceLine');
-
-  const label =
-    $('faceVizLabel');
-
-  const actualLegend =
-    $('actualLegend');
-
-
-  const absAngle =
-    Math.abs(angle);
-
-
-  let color =
-    '#3fb950';
-
-
-  if(absAngle <= 1.0){
-
-    color =
-      '#3fb950';
+  if(absAngle>1.0 && absAngle<=4.0){
+    color='#d29922';
   }
-
-
-  else if(absAngle <= 4.0){
-
-    color =
-      '#d29922';
+  else if(absAngle>4.0){
+    color='#f85149';
   }
-
-
-  else{
-
-    color =
-      '#f85149';
-  }
-
 
   /*
-    SVG rotation:
-    positive angles rotate clockwise.
+    Real putting face errors are usually small.
+    To make the graphic useful:
 
-    Our XIAO convention:
+    real ±5° = visual ±35°
+
+    Anything outside ±5° is visually capped.
+  */
+
+  const MAX_REAL_ANGLE=5.0;
+  const MAX_VISUAL_ANGLE=35.0;
+
+  const clampedAngle=
+    Math.max(
+      -MAX_REAL_ANGLE,
+      Math.min(MAX_REAL_ANGLE,angle)
+    );
+
+  /*
+    XIAO convention:
     negative = OPEN
     positive = CLOSED
 
-    We flip the sign here so the visual reads more
-    intuitively from the golfer's perspective.
+    Negative screen rotation raises the line.
+    Positive screen rotation lowers the line.
 
-    If you ever prefer the opposite direction,
-    change "-angle" below to "angle".
+    This maps OPEN upward and CLOSED downward.
   */
 
-  const visualAngle =
-    -angle;
+  const visualAngle=
+    (clampedAngle/MAX_REAL_ANGLE)*
+    MAX_VISUAL_ANGLE;
 
+  const radians=
+    visualAngle*Math.PI/180;
 
-  faceLine.setAttribute(
+  const startX=70;
+  const startY=110;
+  const length=215;
+
+  const endX=
+    startX+
+    length*Math.cos(radians);
+
+  const endY=
+    startY+
+    length*Math.sin(radians);
+
+  $('faceLine').setAttribute(
+    'x2',
+    endX
+  );
+
+  $('faceLine').setAttribute(
+    'y2',
+    endY
+  );
+
+  $('faceLine').setAttribute(
     'stroke',
     color
   );
 
-
-  faceLine.setAttribute(
-    'transform',
-    `rotate(${visualAngle} 110 110)`
-  );
-
-
-  actualLegend.style.background =
+  $('actualLegend').style.background=
     color;
 
-
-  if(absAngle < 0.05){
-
-    label.textContent =
+  if(absAngle<0.05){
+    $('faceVizLabel').textContent=
       '0.00° SQUARE';
   }
-
   else{
-
-    label.textContent =
+    $('faceVizLabel').textContent=
       `${absAngle.toFixed(2)}° ${direction}`;
   }
 }
 
-
-// ======================================================
-// SEND COMMAND TO XIAO
-// ======================================================
-
-async function sendCommand(
-  command
-){
+async function sendCommand(command){
 
   if(
     !device ||
     !device.gatt.connected ||
     !commandCharacteristic
   ){
-
-    $('stateText').textContent =
-      'Connect to putter first';
-
+    $('stateText').textContent='Connect to putter first';
     return;
   }
 
-
   try{
-
-    const data =
-      new TextEncoder().encode(
-        command
-      );
-
-
     await commandCharacteristic.writeValue(
-      data
+      new TextEncoder().encode(command)
     );
 
-
-    log(
-      'COMMAND -> ' +
-      command
-    );
+    log('COMMAND -> '+command);
   }
-
-
   catch(err){
-
-    console.error(err);
-
-
-    log(
-      'COMMAND ERROR: ' +
-      err.message
-    );
-
-
-    $('stateText').textContent =
-      'Command failed';
+    log('COMMAND ERROR: '+err.message);
+    $('stateText').textContent='Command failed';
   }
 }
 
+function handleMessage(message){
 
-// ======================================================
-// HANDLE BLE MESSAGE
-// ======================================================
+  log(message);
 
-function handleMessage(
-  message
-){
+  const parts=message.split(',');
+  const type=parts[0];
 
-  log(
-    message
-  );
+  if(type==='STATE'){
 
-
-  const parts =
-    message.split(',');
-
-
-  const type =
-    parts[0];
-
-
-  // ----------------------------------------------------
-  // STATE
-  // ----------------------------------------------------
-
-  if(type === 'STATE'){
-
-    if(parts[1] === 'ADDRESS'){
-
-      $('stateText').textContent =
-        'Ready — make your putt';
-
-      setAddressReady(
-        true
-      );
+    if(parts[1]==='ADDRESS'){
+      $('stateText').textContent='Ready — make your putt';
+      setAddressReady(true);
     }
-
-
-    else if(parts[1] === 'WAITING'){
-
-      $('stateText').textContent =
-        'Hold still at address';
-
-      setAddressReady(
-        false
-      );
+    else if(parts[1]==='WAITING'){
+      $('stateText').textContent='Hold still at address';
+      setAddressReady(false);
     }
-
 
     return;
   }
 
+  if(type==='MODE'){
+    showMode(parts[1]);
 
-  // ----------------------------------------------------
-  // MODE
-  // ----------------------------------------------------
-
-  if(type === 'MODE'){
-
-    showMode(
-      parts[1]
-    );
-
-
-    $('stateText').textContent =
-      parts[1] === 'MENU'
+    $('stateText').textContent=
+      parts[1]==='MENU'
         ? 'Select a mode'
         : 'Hold still at address';
 
-
     return;
   }
 
+  if(type==='CALIBRATION'){
 
-  // ----------------------------------------------------
-  // CALIBRATION
-  // ----------------------------------------------------
+    setAddressReady(false);
 
-  if(type === 'CALIBRATION'){
-
-    setAddressReady(
-      false
-    );
-
-
-    if(parts[1] === 'START'){
-
-      $('stateText').textContent =
-        'Keep putter completely still — calibrating…';
-
-
-      $('calibrateBtn').disabled =
-        true;
+    if(parts[1]==='START'){
+      $('stateText').textContent='Keep putter completely still — calibrating…';
+      $('calibrateBtn').disabled=true;
     }
 
-
-    else if(parts[1] === 'DONE'){
-
-      $('stateText').textContent =
-        currentMode
-          ? 'Calibration complete — hold still at address'
-          : 'Calibration complete';
-
-
-      $('calibrateBtn').disabled =
-        false;
+    else if(parts[1]==='DONE'){
+      $('stateText').textContent='Calibration complete — hold still at address';
+      $('calibrateBtn').disabled=false;
     }
 
+    return;
+  }
+
+  if(
+    type==='TEMPO' &&
+    parts[1]==='RESET'
+  ){
+
+    $('sessionCard').classList.add('hidden');
+
+    $('sessionBack').textContent='—';
+    $('sessionForward').textContent='—';
+    $('sessionTempo').textContent='—';
+
+    $('stateText').textContent='Session reset — hold still at address';
 
     return;
   }
 
-
-  // ----------------------------------------------------
-  // TEMPO RESET
-  // ----------------------------------------------------
-
   if(
-    type === 'TEMPO' &&
-    parts[1] === 'RESET'
+    type==='TEMPO' &&
+    parts.length>=4
   ){
 
-    $('sessionCard').classList.add(
-      'hidden'
-    );
+    showMode('TEMPO');
 
+    const back=Number(parts[1]);
+    const forward=Number(parts[2]);
+    const ratio=Number(parts[3]);
 
-    $('sessionBack').textContent =
-      '—';
+    $('tempoRatio').textContent=ratio.toFixed(2)+' : 1';
+    $('backTime').textContent=back+' ms';
+    $('forwardTime').textContent=forward+' ms';
 
-
-    $('sessionForward').textContent =
-      '—';
-
-
-    $('sessionTempo').textContent =
-      '—';
-
-
-    $('stateText').textContent =
-      'Session reset — hold still at address';
-
-
-    return;
-  }
-
-
-  // ----------------------------------------------------
-  // TEMPO RESULT
-  // ----------------------------------------------------
-
-  if(
-    type === 'TEMPO' &&
-    parts.length >= 4
-  ){
-
-    showMode(
-      'TEMPO'
-    );
-
-
-    const back =
-      Number(
-        parts[1]
-      );
-
-
-    const forward =
-      Number(
-        parts[2]
-      );
-
-
-    const ratio =
-      Number(
-        parts[3]
-      );
-
-
-    $('tempoRatio').textContent =
-      ratio.toFixed(2) +
-      ' : 1';
-
-
-    $('backTime').textContent =
-      back +
-      ' ms';
-
-
-    $('forwardTime').textContent =
-      forward +
-      ' ms';
-
-
-    // Backswing label
-
-    let result =
+    let result=
       timingClass(
         back,
         BACKSWING_MIN,
         BACKSWING_MAX
       );
 
+    $('backStatus').textContent=result[0];
+    $('backStatus').className='timingStatus '+result[1];
 
-    $('backStatus').textContent =
-      result[0];
-
-
-    $('backStatus').className =
-      'timingStatus ' +
-      result[1];
-
-
-    // Forward label
-
-    result =
+    result=
       timingClass(
         forward,
         FORWARD_MIN,
         FORWARD_MAX
       );
 
+    $('forwardStatus').textContent=result[0];
+    $('forwardStatus').className='timingStatus '+result[1];
 
-    $('forwardStatus').textContent =
-      result[0];
+    result=tempoClass(ratio);
 
-
-    $('forwardStatus').className =
-      'timingStatus ' +
-      result[1];
-
-
-    // Tempo label
-
-    result =
-      tempoClass(
-        ratio
-      );
-
-
-    $('tempoRating').textContent =
-      result[0];
-
-
-    $('tempoRating').className =
-      'pill ' +
-      result[1];
-
+    $('tempoRating').textContent=result[0];
+    $('tempoRating').className='pill '+result[1];
 
     return;
   }
 
-
-  // ----------------------------------------------------
-  // FACE RESULT
-  // ----------------------------------------------------
-
   if(
-    type === 'FACE' &&
-    parts.length >= 4
+    type==='FACE' &&
+    parts.length>=4
   ){
 
-    showMode(
-      'FACE'
-    );
+    showMode('FACE');
 
+    const transition=Number(parts[1]);
+    const impact=Number(parts[2]);
+    const direction=parts[3];
 
-    const transition =
-      Number(
-        parts[1]
-      );
+    $('faceImpact').textContent=
+      Math.abs(impact).toFixed(2)+'°';
 
+    $('faceTransition').textContent=
+      Math.abs(transition).toFixed(2)+'°';
 
-    const impact =
-      Number(
-        parts[2]
-      );
-
-
-    const direction =
-      parts[3];
-
-
-    $('faceImpact').textContent =
-      Math.abs(
-        impact
-      ).toFixed(2) +
-      '°';
-
-
-    $('faceTransition').textContent =
-      Math.abs(
-        transition
-      ).toFixed(2) +
-      '°';
-
-
-    $('faceDirection').textContent =
+    $('faceDirection').textContent=
       direction;
-
-
-    // NEW FACE VISUAL
 
     updateFaceVisualization(
       impact,
       direction
     );
 
+    const result=
+      faceClass(impact);
 
-    const result =
-      faceClass(
-        impact
-      );
-
-
-    $('faceRating').textContent =
+    $('faceRating').textContent=
       result[0];
 
-
-    $('faceRating').className =
-      'pill ' +
-      result[1];
-
+    $('faceRating').className=
+      'pill '+result[1];
 
     return;
   }
-
-
-  // ----------------------------------------------------
-  // SESSION
-  // ----------------------------------------------------
 
   if(
-    type === 'SESSION' &&
-    parts.length >= 4
+    type==='SESSION' &&
+    parts.length>=4 &&
+    currentMode==='TEMPO'
   ){
 
-    if(
-      currentMode !==
-      'TEMPO'
-    ){
+    $('sessionCard').classList.remove('hidden');
 
-      return;
-    }
+    $('sessionBack').textContent=
+      Math.round(Number(parts[1]))+' ms';
 
+    $('sessionForward').textContent=
+      Math.round(Number(parts[2]))+' ms';
 
-    $('sessionCard').classList.remove(
-      'hidden'
-    );
-
-
-    $('sessionBack').textContent =
-      Math.round(
-        Number(
-          parts[1]
-        )
-      ) +
-      ' ms';
-
-
-    $('sessionForward').textContent =
-      Math.round(
-        Number(
-          parts[2]
-        )
-      ) +
-      ' ms';
-
-
-    $('sessionTempo').textContent =
-      Number(
-        parts[3]
-      ).toFixed(2) +
-      ' : 1';
-
+    $('sessionTempo').textContent=
+      Number(parts[3]).toFixed(2)+' : 1';
 
     return;
   }
 
-
-  // ----------------------------------------------------
-  // ERROR
-  // ----------------------------------------------------
-
-  if(type === 'ERROR'){
-
-    setAddressReady(
-      false
-    );
-
-
-    $('stateText').textContent =
-      'Putt not detected correctly — try again';
+  if(type==='ERROR'){
+    setAddressReady(false);
+    $('stateText').textContent='Putt not detected correctly — try again';
   }
 }
-
-
-// ======================================================
-// CONNECT
-// ======================================================
 
 async function connect(){
 
   try{
 
-    if(
-      !navigator.bluetooth
-    ){
-
-      alert(
-        'Web Bluetooth is not available in this browser.'
-      );
-
+    if(!navigator.bluetooth){
+      alert('Web Bluetooth is not available in this browser.');
       return;
     }
 
+    $('stateText').textContent='Choose Putter Analyzer…';
 
-    $('stateText').textContent =
-      'Choose Putter Analyzer…';
-
-
-    device =
+    device=
       await navigator.bluetooth.requestDevice({
-
         filters:[
           {
             services:[
@@ -1402,190 +858,107 @@ async function connect(){
             ]
           }
         ]
-
       });
 
-
     device.addEventListener(
-
       'gattserverdisconnected',
-
-      () => {
-
-        setConnected(
-          false
-        );
-
-
-        setAddressReady(
-          false
-        );
-
-
-        showMode(
-          null
-        );
-
-
-        $('stateText').textContent =
-          'Disconnected';
-
-
-        log(
-          'Disconnected'
-        );
+      ()=>{
+        setConnected(false);
+        setAddressReady(false);
+        showMode(null);
+        $('stateText').textContent='Disconnected';
+        log('Disconnected');
       }
-
     );
 
+    $('stateText').textContent='Connecting…';
 
-    $('stateText').textContent =
-      'Connecting…';
-
-
-    const server =
+    const server=
       await device.gatt.connect();
 
-
-    const service =
+    const service=
       await server.getPrimaryService(
         SERVICE_UUID
       );
 
-
-    resultCharacteristic =
+    resultCharacteristic=
       await service.getCharacteristic(
         RESULT_UUID
       );
 
-
-    commandCharacteristic =
+    commandCharacteristic=
       await service.getCharacteristic(
         COMMAND_UUID
       );
 
-
     await resultCharacteristic.startNotifications();
 
-
     resultCharacteristic.addEventListener(
-
       'characteristicvaluechanged',
+      event=>{
 
-      event => {
-
-        const value =
-          event.target.value;
-
-
-        const message =
+        const message=
           new TextDecoder('utf-8')
-            .decode(value)
+            .decode(event.target.value)
             .replace(/\0/g,'')
             .trim();
 
-
         if(message){
-
-          handleMessage(
-            message
-          );
+          handleMessage(message);
         }
       }
-
     );
 
+    setConnected(true);
+    showMode(null);
 
-    setConnected(
-      true
-    );
-
-
-    showMode(
-      null
-    );
-
-
-    $('stateText').textContent =
+    $('stateText').textContent=
       'Connected — choose Tempo or Face';
 
-
     log(
-      'Connected to ' +
-      (
-        device.name ||
-        'Putter Analyzer'
-      )
+      'Connected to '+
+      (device.name||'Putter Analyzer')
     );
-
   }
-
 
   catch(err){
 
-    console.error(
-      err
-    );
+    setAddressReady(false);
 
-
-    setAddressReady(
-      false
-    );
-
-
-    $('stateText').textContent =
+    $('stateText').textContent=
       'Connection failed';
 
-
     log(
-      'ERROR: ' +
+      'ERROR: '+
       err.message
     );
   }
 }
 
+$('connectBtn').addEventListener(
+  'click',
+  connect
+);
 
-// ======================================================
-// BUTTONS
-// ======================================================
+$('tempoBtn').addEventListener(
+  'click',
+  ()=>sendCommand('1')
+);
 
-$('connectBtn')
-  .addEventListener(
-    'click',
-    connect
-  );
+$('faceBtn').addEventListener(
+  'click',
+  ()=>sendCommand('2')
+);
 
+$('calibrateBtn').addEventListener(
+  'click',
+  ()=>sendCommand('C')
+);
 
-$('tempoBtn')
-  .addEventListener(
-    'click',
-    () =>
-      sendCommand('1')
-  );
-
-
-$('faceBtn')
-  .addEventListener(
-    'click',
-    () =>
-      sendCommand('2')
-  );
-
-
-$('calibrateBtn')
-  .addEventListener(
-    'click',
-    () =>
-      sendCommand('C')
-  );
-
-
-$('resetBtn')
-  .addEventListener(
-    'click',
-    () =>
-      sendCommand('R')
-  );
+$('resetBtn').addEventListener(
+  'click',
+  ()=>sendCommand('R')
+);
 
 </script>
 
