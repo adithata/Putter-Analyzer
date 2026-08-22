@@ -572,6 +572,52 @@ button:disabled{opacity:.38;cursor:not-allowed}
     color:var(--accent);
   }
 }
+
+/* v17 layout corrections */
+@media (min-width:700px){
+  .wrap{
+    width:min(680px,100%);
+    padding-left:22px;
+    padding-right:22px;
+  }
+}
+
+#tempoTrendSvg,
+#faceTrendSvg{
+  width:100%;
+  height:150px;
+  max-height:150px;
+  display:block;
+}
+
+#faceSvg,
+#faceDispersionSvg{
+  width:100%;
+  height:auto;
+  max-height:330px;
+}
+
+.trendPanel{
+  min-height:0;
+}
+
+#trendCard{
+  min-height:0;
+}
+
+@media (max-width:430px){
+  #tempoTrendSvg,
+  #faceTrendSvg{
+    height:125px;
+    max-height:125px;
+  }
+
+  #faceSvg,
+  #faceDispersionSvg{
+    max-height:260px;
+  }
+}
+
 </style>
 
 
@@ -589,9 +635,6 @@ button:disabled{opacity:.38;cursor:not-allowed}
         </div>
       </div>
       <div class="brandChip">Live Sensor</div>
-    </div>
-  </div>
-      <div class="brandChip">XIAO • BLE</div>
     </div>
   </div>
 
