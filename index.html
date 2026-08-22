@@ -347,29 +347,6 @@ button:active{transform:scale(.99)}button:disabled{opacity:.45}
   text-align:center;
 }
 
-.smoothnessBox{
-  margin-top:12px;
-  padding:14px;
-  background:var(--card2);
-  border:1px solid var(--border);
-  border-radius:14px;
-}
-.smoothnessTop{
-  display:flex;
-  align-items:flex-end;
-  justify-content:space-between;
-  gap:12px;
-}
-.smoothnessValue{
-  font-size:26px;
-  font-weight:800;
-}
-.smoothnessNote{
-  color:var(--muted);
-  font-size:11px;
-  margin-top:5px;
-  line-height:1.4;
-}
 
 </style>
 </head>
@@ -430,19 +407,6 @@ button:active{transform:scale(.99)}button:disabled{opacity:.45}
     </div>
 
     <div id="tempoRating" class="pill">Waiting</div>
-
-    <div class="smoothnessBox">
-      <div class="smoothnessTop">
-        <div>
-          <div class="label">Stroke smoothness</div>
-          <div id="smoothnessValue" class="smoothnessValue">—</div>
-        </div>
-        <div id="smoothnessRating" class="timingStatus">Waiting</div>
-      </div>
-      <div id="smoothnessNote" class="smoothnessNote">
-        Ready for optional IMU smoothness data from firmware.
-      </div>
-    </div>
 
     <div class="tempoViz">
       <div class="vizTitle">Stroke timing</div>
@@ -707,7 +671,6 @@ let tempoHistory=[];
 let tempoBackHistory=[];
 let tempoForwardHistory=[];
 let faceHistory=[];
-let currentSmoothness=null;
 let faceSessionComplete=false;
 const FACE_SESSION_PUTTS=5;
 
@@ -940,25 +903,6 @@ function toggleBaselineMode(){
   renderBaseline();
 }
 
-function smoothnessClass(score){
-  if(score>=90) return ['EXCELLENT','good'];
-  if(score>=80) return ['GOOD','good'];
-  if(score>=65) return ['FAIR','warn'];
-  return ['NEEDS WORK','bad'];
-}
-
-function updateSmoothness(score){
-  const s=Math.max(0,Math.min(100,Number(score)));
-  if(!Number.isFinite(s)) return;
-
-  currentSmoothness=s;
-  $('smoothnessValue').textContent=Math.round(s)+' / 100';
-
-  const result=smoothnessClass(s);
-  $('smoothnessRating').textContent=result[0];
-  $('smoothnessRating').className='timingStatus '+result[1];
-  $('smoothnessNote').textContent='Based on within-stroke IMU motion smoothness.';
-}
 
 function tempoCoachMessage(backAvg,forwardAvg,tempoAvg,ratioStd){
   const comments=[];
@@ -1188,7 +1132,6 @@ function renderSavedSessions(){
       detail.textContent=
         `5-putt tempo session`+
         (Number.isFinite(Number(session.ratioStd))?` · Ratio spread ${Number(session.ratioStd).toFixed(2)}`:'')+
-        (Number.isFinite(Number(session.smoothness))?` · Smoothness ${Math.round(Number(session.smoothness))}/100`:'')+
         (session.coach?` · ${session.coach}`:'');
     }
 
@@ -1466,11 +1409,6 @@ function handleMessage(message){
     tempoHistory=[];
     tempoBackHistory=[];
     tempoForwardHistory=[];
-    currentSmoothness=null;
-    $('smoothnessValue').textContent='—';
-    $('smoothnessRating').textContent='Waiting';
-    $('smoothnessRating').className='timingStatus';
-    $('smoothnessNote').textContent='Ready for optional IMU smoothness data from firmware.';
     $('ratioHistory').innerHTML='';
     $('sessionCard').classList.add('hidden');
     $('sessionBack').textContent='—';$('sessionForward').textContent='—';$('sessionTempo').textContent='—';
@@ -1498,13 +1436,6 @@ function handleMessage(message){
     updateTempoVisualization(back,forward,ratio);
     return;
   }
-
-
-  if(type==='SMOOTH'&&parts.length>=2){
-    updateSmoothness(Number(parts[1]));
-    return;
-  }
-
   if(type==='FACE'&&parts.length>=4){
     showMode('FACE');
     const transition=Number(parts[1]),impact=Number(parts[2]),direction=parts[3];
@@ -1540,9 +1471,7 @@ function handleMessage(message){
       backAvg:backAvg,
       forwardAvg:forwardAvg,
       tempoAvg:tempoAvg,
-      ratioStd:ratioStd,
-      smoothness:currentSmoothness,
-      coach:coach
+      ratioStd:ratioStd,      coach:coach
     });
 
     return;
