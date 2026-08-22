@@ -69,6 +69,44 @@ button:active{transform:scale(.99)}button:disabled{opacity:.45}
 .legendItem{display:flex;align-items:center;gap:6px}.legendSwatch{width:20px;height:4px;border-radius:999px}.legendTarget{background:#8b949e}
 .rangeCard{margin-top:12px;background:var(--card2);border:1px solid var(--border);border-radius:14px;padding:14px}
 .rangeValue{font-size:28px;font-weight:800;margin-top:4px}.rangeNote{color:var(--muted);font-size:12px;line-height:1.4;margin-top:6px}
+
+.faceProgress{
+  margin-top:10px;
+  color:var(--muted);
+  font-size:13px;
+  font-weight:700;
+}
+.faceSessionStats{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+  margin-top:12px;
+}
+.faceSessionStat{
+  background:var(--card2);
+  border:1px solid var(--border);
+  border-radius:14px;
+  padding:14px;
+}
+.faceSessionBig{
+  font-size:26px;
+  font-weight:800;
+  margin-top:4px;
+}
+.faceDispersion{
+  margin-top:14px;
+  padding:14px;
+  background:var(--card2);
+  border:1px solid var(--border);
+  border-radius:14px;
+  text-align:center;
+}
+.faceDispersionNote{
+  color:var(--muted);
+  font-size:12px;
+  margin-top:8px;
+}
+
 </style>
 </head>
 <body>
@@ -212,6 +250,58 @@ button:active{transform:scale(.99)}button:disabled{opacity:.45}
     </div>
 
     <div id="faceRating" class="pill">Waiting</div>
+    <div id="faceProgress" class="faceProgress">Face session: 0 / 5</div>
+  </div>
+
+
+  <div id="faceSessionCard" class="card hidden">
+    <div class="label">5-putt face session</div>
+
+    <div class="faceSessionStats">
+      <div class="faceSessionStat">
+        <div class="label">Average face</div>
+        <div id="faceSessionAvg" class="faceSessionBig">—</div>
+      </div>
+
+      <div class="faceSessionStat">
+        <div class="label">Consistency</div>
+        <div id="faceConsistency" class="faceSessionBig">—</div>
+      </div>
+
+      <div class="faceSessionStat">
+        <div class="label">Face spread</div>
+        <div id="faceStdDev" class="faceSessionBig">—</div>
+      </div>
+
+      <div class="faceSessionStat">
+        <div class="label">Tendency</div>
+        <div id="faceTendency" class="faceSessionBig">—</div>
+      </div>
+    </div>
+
+    <div class="faceDispersion">
+      <div class="vizTitle">5-putt start-line dispersion</div>
+
+      <svg id="faceDispersionSvg" viewBox="0 0 360 230" style="width:100%;max-width:440px;height:auto;display:block;margin:0 auto;">
+        <text x="58" y="38" fill="#8b949e" font-size="11" text-anchor="middle">HOLE</text>
+        <text x="302" y="38" fill="#8b949e" font-size="11" text-anchor="middle">BALL</text>
+
+        <line x1="302" y1="115" x2="60" y2="115"
+              stroke="#8b949e" stroke-width="5" stroke-linecap="round"></line>
+
+        <circle cx="60" cy="115" r="11" fill="none" stroke="#8b949e" stroke-width="4"></circle>
+        <circle cx="60" cy="115" r="3.5" fill="#8b949e"></circle>
+
+        <circle cx="302" cy="115" r="8" fill="#f0f6fc"></circle>
+        <circle cx="302" cy="115" r="3" fill="#0d1117"></circle>
+
+        <g id="dispersionLines"></g>
+      </svg>
+
+      <div class="faceDispersionNote">
+        Each colored line is one putt. Tighter grouping means more repeatable face control.
+      </div>
+    </div>
   </div>
 
   <div id="sessionCard" class="card hidden">
@@ -241,6 +331,9 @@ const START_LINE_FACE_FACTOR=0.85;
 
 let device,resultCharacteristic,commandCharacteristic,currentMode=null;
 let tempoHistory=[];
+let faceHistory=[];
+let faceSessionComplete=false;
+const FACE_SESSION_PUTTS=5;
 
 const $=id=>document.getElementById(id);
 
@@ -268,6 +361,7 @@ function showMode(mode){
     $('modeText').textContent='Mode: Tempo + Consistency';
     $('tempoCard').classList.remove('hidden');
     $('faceCard').classList.add('hidden');
+    $('faceSessionCard').classList.add('hidden');
     $('resetBtn').disabled=false;
     if($('sessionTempo').textContent!=='—') $('sessionCard').classList.remove('hidden');
   }else if(mode==='FACE'){
@@ -276,10 +370,12 @@ function showMode(mode){
     $('tempoCard').classList.add('hidden');
     $('sessionCard').classList.add('hidden');
     $('resetBtn').disabled=true;
+    if(faceSessionComplete) $('faceSessionCard').classList.remove('hidden');
   }else{
     $('modeText').textContent='Mode: —';
     $('tempoCard').classList.add('hidden');
     $('faceCard').classList.add('hidden');
+    $('faceSessionCard').classList.add('hidden');
     $('sessionCard').classList.add('hidden');
     $('resetBtn').disabled=true;
   }
@@ -334,6 +430,146 @@ function updateTempoVisualization(back,forward,ratio){
     dot.style.opacity=String(0.45+0.11*i);
     $('ratioHistory').appendChild(dot);
   });
+}
+
+
+function resetFaceSession(){
+  faceHistory=[];
+  faceSessionComplete=false;
+  $('faceProgress').textContent='Face session: 0 / 5';
+  $('faceSessionCard').classList.add('hidden');
+  $('dispersionLines').innerHTML='';
+  $('faceSessionAvg').textContent='—';
+  $('faceConsistency').textContent='—';
+  $('faceStdDev').textContent='—';
+  $('faceTendency').textContent='—';
+}
+
+function faceLineColor(angle){
+  const a=Math.abs(angle);
+  if(a<=1.0) return '#3fb950';
+  if(a<=4.0) return '#d29922';
+  return '#f85149';
+}
+
+function dispersionEndpoint(angle){
+  const MAX_REAL_ANGLE=5.0;
+  const MAX_VISUAL_ANGLE=28.0;
+  const clamped=Math.max(-MAX_REAL_ANGLE,Math.min(MAX_REAL_ANGLE,angle));
+  const displayAngle=-(clamped/MAX_REAL_ANGLE)*MAX_VISUAL_ANGLE;
+  const radians=displayAngle*Math.PI/180;
+
+  const startX=302;
+  const startY=115;
+  const targetX=60;
+  const length=startX-targetX;
+
+  return {
+    x:startX-length*Math.cos(radians),
+    y:startY-length*Math.sin(radians)
+  };
+}
+
+function updateFaceSession(angle){
+  if(faceSessionComplete){
+    resetFaceSession();
+  }
+
+  faceHistory.push(angle);
+
+  $('faceProgress').textContent=
+    `Face session: ${faceHistory.length} / ${FACE_SESSION_PUTTS}`;
+
+  if(faceHistory.length < FACE_SESSION_PUTTS){
+    return;
+  }
+
+  const avg=
+    faceHistory.reduce((sum,v)=>sum+v,0) /
+    faceHistory.length;
+
+  const variance=
+    faceHistory.reduce((sum,v)=>sum+Math.pow(v-avg,2),0) /
+    faceHistory.length;
+
+  const stdDev=Math.sqrt(variance);
+
+  const consistency=
+    Math.max(
+      0,
+      Math.min(
+        100,
+        100-(stdDev/2.0*100)
+      )
+    );
+
+  let openCount=0;
+  let closedCount=0;
+  let squareCount=0;
+
+  faceHistory.forEach(v=>{
+    if(Math.abs(v)<0.05) squareCount++;
+    else if(v<0) openCount++;
+    else closedCount++;
+  });
+
+  let avgDirection='SQUARE';
+  if(Math.abs(avg)>=0.05){
+    avgDirection=avg<0?'OPEN':'CLOSED';
+  }
+
+  let tendency='BALANCED';
+
+  if(openCount>=3){
+    tendency='OPEN BIAS';
+  }
+  else if(closedCount>=3){
+    tendency='CLOSED BIAS';
+  }
+  else if(squareCount>=3){
+    tendency='CENTERED';
+  }
+  else if(stdDev>1.5){
+    tendency='INCONSISTENT';
+  }
+
+  $('faceSessionAvg').textContent=
+    Math.abs(avg).toFixed(2)+'° '+avgDirection;
+
+  $('faceConsistency').textContent=
+    Math.round(consistency)+' / 100';
+
+  $('faceStdDev').textContent=
+    stdDev.toFixed(2)+'°';
+
+  $('faceTendency').textContent=
+    tendency;
+
+  const group=$('dispersionLines');
+  group.innerHTML='';
+
+  faceHistory.forEach((angle,index)=>{
+    const end=dispersionEndpoint(angle);
+
+    const line=document.createElementNS(
+      'http://www.w3.org/2000/svg',
+      'line'
+    );
+
+    line.setAttribute('x1','302');
+    line.setAttribute('y1','115');
+    line.setAttribute('x2',String(end.x));
+    line.setAttribute('y2',String(end.y));
+    line.setAttribute('stroke',faceLineColor(angle));
+    line.setAttribute('stroke-width','4');
+    line.setAttribute('stroke-linecap','round');
+    line.setAttribute('opacity',String(0.55+index*0.1));
+
+    group.appendChild(line);
+  });
+
+  $('faceSessionCard').classList.remove('hidden');
+  faceSessionComplete=true;
 }
 
 function estimateMakeRangeFeet(faceAngleDegrees){
@@ -451,6 +687,7 @@ function handleMessage(message){
     $('faceDirection').textContent=direction;
 
     updateFaceVisualization(impact,direction);
+    updateFaceSession(impact);
 
     const result=faceClass(impact);
     $('faceRating').textContent=result[0];$('faceRating').className='pill '+result[1];
@@ -504,7 +741,7 @@ async function connect(){
 
 $('connectBtn').addEventListener('click',connect);
 $('tempoBtn').addEventListener('click',()=>sendCommand('1'));
-$('faceBtn').addEventListener('click',()=>sendCommand('2'));
+$('faceBtn').addEventListener('click',()=>{resetFaceSession();sendCommand('2')});
 $('calibrateBtn').addEventListener('click',()=>sendCommand('C'));
 $('resetBtn').addEventListener('click',()=>sendCommand('R'));
 </script>
