@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Putter Analyzer</title>
+<style>
+  :root{
+    --bg:#0d1117;
+    --card:#161b22;
+    --card2:#0f141b;
+    --text:#f0f6fc;
+    --muted:#8b949e;
+    --accent:#2f81f7;
+    --good:#3fb950;
+    --warn:#d29922;
+    --bad:#f85149;
+    --border:#30363d;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:var(--bg);
+    color:var(--text);
+    min-height:100vh;
+  }
+  .wrap{
+    width:min(560px,100%);
+    margin:0 auto;
+    padding:24px 18px 40px;
+  }
+  h1{margin:8px 0 2px;font-size:30px}
+  .sub{color:var(--muted);margin-bottom:20px}
+  .status{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:12px 14px;
+    border:1px solid var(--border);
+    border-radius:14px;
+    background:var(--card);
+    margin-bottom:14px;
+  }
+  .dot{
+    width:10px;height:10px;border-radius:50%;
+    background:var(--muted);
+  }
+  .dot.connected{background:var(--good)}
+  button{
+    width:100%;
+    border:0;
+    border-radius:14px;
+    padding:16px;
+    font-size:17px;
+    font-weight:700;
+    background:var(--accent);
+    color:white;
+    margin-bottom:20px;
+  }
+  button:active{transform:scale(.99)}
+  .card{
+    background:var(--card);
+    border:1px solid var(--border);
+    border-radius:18px;
+    padding:18px;
+    margin-bottom:14px;
+  }
+  .label{
+    color:var(--muted);
+    font-size:13px;
+    text-transform:uppercase;
+    letter-spacing:.08em;
+  }
+  .big{
+    font-size:46px;
+    font-weight:800;
+    margin:6px 0 2px;
+  }
+  .grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:12px;
+    margin-top:14px;
+  }
+  .mini{
+    background:var(--card2);
+    border:1px solid var(--border);
+    border-radius:14px;
+    padding:14px;
+  }
+  .value{font-size:22px;font-weight:700;margin-top:4px}
+  .hidden{display:none}
+  .pill{
+    display:inline-block;
+    margin-top:10px;
+    padding:7px 10px;
+    border-radius:999px;
+    background:#21262d;
+    font-weight:700;
+  }
+  .good{color:var(--good)}
+  .warn{color:var(--warn)}
+  .bad{color:var(--bad)}
+  .history{
+    font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+    font-size:12px;
+    white-space:pre-wrap;
+    color:var(--muted);
+    max-height:180px;
+    overflow:auto;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Putter Analyzer</h1>
+  <div class="sub">Automatic BLE putt feedback</div>
+
+  <div class="status">
+    <div id="dot" class="dot"></div>
+    <div>
+      <div id="statusText"><strong>Not connected</strong></div>
+      <div id="stateText" style="color:var(--muted);font-size:13px">Tap connect to begin</div>
+    </div>
+  </div>
+
+  <button id="connectBtn">Connect to Putter</button>
+
+  <div id="tempoCard" class="card hidden">
+    <div class="label">Tempo</div>
+    <div id="tempoRatio" class="big">—</div>
+    <div class="grid">
+      <div class="mini">
+        <div class="label">Backswing</div>
+        <div id="backTime" class="value">—</div>
+      </div>
+      <div class="mini">
+        <div class="label">Forward</div>
+        <div id="forwardTime" class="value">—</div>
+      </div>
+    </div>
+    <div id="tempoRating" class="pill">Waiting</div>
+  </div>
+
+  <div id="faceCard" class="card hidden">
+    <div class="label">Face at impact</div>
+    <div id="faceImpact" class="big">—</div>
+    <div class="grid">
+      <div class="mini">
+        <div class="label">Transition</div>
+        <div id="faceTransition" class="value">—</div>
+      </div>
+      <div class="mini">
+        <div class="label">Direction</div>
+        <div id="faceDirection" class="value">—</div>
+      </div>
+    </div>
+    <div id="faceRating" class="pill">Waiting</div>
+  </div>
+
+  <div id="sessionCard" class="card hidden">
+    <div class="label">5-putt session average</div>
+    <div class="grid">
+      <div class="mini">
+        <div class="label">Backswing</div>
+        <div id="sessionBack" class="value">—</div>
+      </div>
+      <div class="mini">
+        <div class="label">Forward</div>
+        <div id="sessionForward" class="value">—</div>
+      </div>
+    </div>
+    <div style="margin-top:12px">
+      <div class="label">Tempo</div>
+      <div id="sessionTempo" class="value">—</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="label">BLE log</div>
+    <div id="log" class="history">Waiting for connection…</div>
+  </div>
+</div>
+
+<script>
+const SERVICE_UUID = '12345678-1234-1234-1234-1234567890ab';
+const RESULT_UUID  = '12345678-1234-1234-1234-1234567890ac';
+
+let device;
+let characteristic;
+
+const $ = id => document.getElementById(id);
+
+function log(msg){
+  const t = new Date().toLocaleTimeString();
+  $('log').textContent = `[${t}] ${msg}\n` + $('log').textContent;
+}
+
+function setConnected(on){
+  $('dot').classList.toggle('connected', on);
+  $('statusText').innerHTML = on ? '<strong>Connected</strong>' : '<strong>Not connected</strong>';
+  $('connectBtn').textContent = on ? 'Connected to Putter' : 'Connect to Putter';
+}
+
+function tempoClass(r){
+  if (r >= 1.7 && r <= 2.1) return ['GOOD TEMPO','good'];
+  if (r < 1.7) return ['LOW RATIO','warn'];
+  return ['HIGH RATIO','warn'];
+}
+
+function faceClass(v){
+  const a = Math.abs(v);
+  if (a <= 1.0) return ['EXCELLENT','good'];
+  if (a <= 2.0) return ['GOOD','good'];
+  if (a <= 4.0) return ['NEEDS WORK','warn'];
+  return ['POOR','bad'];
+}
+
+function handleMessage(message){
+  log(message);
+
+  const parts = message.split(',');
+  const type = parts[0];
+
+  if(type === 'STATE'){
+    $('stateText').textContent =
+      parts[1] === 'ADDRESS' ? 'Address detected — ready for putt' :
+      parts[1] === 'WAITING' ? 'Waiting for next address' :
+      parts.slice(1).join(' ');
+    return;
+  }
+
+  if(type === 'MODE'){
+    $('stateText').textContent = `Mode: ${parts[1]}`;
+    return;
+  }
+
+  if(type === 'TEMPO' && parts.length >= 4){
+    const back = Number(parts[1]);
+    const forward = Number(parts[2]);
+    const ratio = Number(parts[3]);
+
+    $('tempoCard').classList.remove('hidden');
+    $('tempoRatio').textContent = ratio.toFixed(2) + ' : 1';
+    $('backTime').textContent = back + ' ms';
+    $('forwardTime').textContent = forward + ' ms';
+
+    const [txt, cls] = tempoClass(ratio);
+    $('tempoRating').textContent = txt;
+    $('tempoRating').className = 'pill ' + cls;
+    return;
+  }
+
+  if(type === 'FACE' && parts.length >= 4){
+    const transition = Number(parts[1]);
+    const impact = Number(parts[2]);
+    const direction = parts[3];
+
+    $('faceCard').classList.remove('hidden');
+    $('faceImpact').textContent = Math.abs(impact).toFixed(2) + '°';
+    $('faceTransition').textContent = Math.abs(transition).toFixed(2) + '°';
+    $('faceDirection').textContent = direction;
+
+    const [txt, cls] = faceClass(impact);
+    $('faceRating').textContent = txt;
+    $('faceRating').className = 'pill ' + cls;
+    return;
+  }
+
+  if(type === 'SESSION' && parts.length >= 4){
+    $('sessionCard').classList.remove('hidden');
+    $('sessionBack').textContent = Math.round(Number(parts[1])) + ' ms';
+    $('sessionForward').textContent = Math.round(Number(parts[2])) + ' ms';
+    $('sessionTempo').textContent = Number(parts[3]).toFixed(2) + ' : 1';
+    return;
+  }
+
+  if(type === 'ERROR'){
+    $('stateText').textContent = 'Putt not detected correctly — try again';
+  }
+}
+
+async function connect(){
+  try{
+    if(!navigator.bluetooth){
+      alert('Web Bluetooth is not available in this browser. Open this page inside Bluefy.');
+      return;
+    }
+
+    $('stateText').textContent = 'Choose Putter Analyzer…';
+
+    device = await navigator.bluetooth.requestDevice({
+      filters: [{ services: [SERVICE_UUID] }]
+    });
+
+    device.addEventListener('gattserverdisconnected', () => {
+      setConnected(false);
+      $('stateText').textContent = 'Disconnected';
+      log('Disconnected');
+    });
+
+    $('stateText').textContent = 'Connecting…';
+
+    const server = await device.gatt.connect();
+    const service = await server.getPrimaryService(SERVICE_UUID);
+    characteristic = await service.getCharacteristic(RESULT_UUID);
+
+    await characteristic.startNotifications();
+
+    characteristic.addEventListener('characteristicvaluechanged', event => {
+      const value = event.target.value;
+      const message = new TextDecoder('utf-8').decode(value).replace(/\0/g,'').trim();
+      if(message) handleMessage(message);
+    });
+
+    setConnected(true);
+    $('stateText').textContent = 'Waiting for putter data';
+    log('Connected to ' + (device.name || 'Putter Analyzer'));
+
+  }catch(err){
+    console.error(err);
+    $('stateText').textContent = 'Connection failed';
+    log('ERROR: ' + err.message);
+  }
+}
+
+$('connectBtn').addEventListener('click', connect);
+</script>
+</body>
+</html>
