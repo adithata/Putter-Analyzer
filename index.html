@@ -348,6 +348,44 @@ button:active{transform:scale(.99)}button:disabled{opacity:.45}
 }
 
 
+
+/* Streaks + export */
+.streakGrid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+  margin-top:12px;
+}
+.streakBox{
+  background:var(--card2);
+  border:1px solid var(--border);
+  border-radius:14px;
+  padding:14px;
+}
+.streakValue{
+  font-size:28px;
+  font-weight:800;
+  margin-top:4px;
+}
+.streakSub{
+  color:var(--muted);
+  font-size:11px;
+  margin-top:4px;
+}
+.exportBtn{
+  background:#21262d;
+  border:1px solid var(--border);
+  padding:9px 11px;
+  border-radius:10px;
+  font-size:12px;
+}
+.historyActions{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+  justify-content:flex-end;
+}
+
 </style>
 </head>
 <body>
@@ -576,6 +614,28 @@ button:active{transform:scale(.99)}button:disabled{opacity:.45}
   </div>
 
 
+
+  <div id="streakCard" class="card">
+    <div class="label">Good-putt streaks</div>
+    <div style="color:var(--muted);font-size:12px;margin-top:4px">
+      Tempo counts when backswing, forward stroke, and ratio are all in the good range. Face counts when impact is within ±1.0°.
+    </div>
+
+    <div class="streakGrid">
+      <div class="streakBox">
+        <div class="label">Tempo current</div>
+        <div id="tempoCurrentStreak" class="streakValue">0</div>
+        <div id="tempoBestStreak" class="streakSub">Best: 0</div>
+      </div>
+
+      <div class="streakBox">
+        <div class="label">Face current</div>
+        <div id="faceCurrentStreak" class="streakValue">0</div>
+        <div id="faceBestStreak" class="streakSub">Best: 0</div>
+      </div>
+    </div>
+  </div>
+
   <div id="baselineCard" class="card">
     <div class="toggleRow">
       <div>
@@ -642,7 +702,10 @@ button:active{transform:scale(.99)}button:disabled{opacity:.45}
         <div class="label">Saved session history</div>
         <div id="historyCount" class="historyCount">0 sessions saved</div>
       </div>
-      <button id="clearHistoryBtn" type="button">Clear History</button>
+      <div class="historyActions">
+        <button id="exportHistoryBtn" class="exportBtn" type="button">Export CSV</button>
+        <button id="clearHistoryBtn" type="button">Clear History</button>
+      </div>
     </div>
 
     <div id="savedSessionList" class="savedSessionList">
@@ -676,6 +739,7 @@ const FACE_SESSION_PUTTS=5;
 
 const SESSION_STORAGE_KEY='putterAnalyzerSessionsV1';
 const BASELINE_STORAGE_KEY='putterAnalyzerBaselineV1';
+const STREAK_STORAGE_KEY='putterAnalyzerStreaksV1';
 const MAX_SAVED_SESSIONS=10;
 
 const $=id=>document.getElementById(id);
@@ -822,6 +886,187 @@ function stdDev(values){
   if(!values || values.length===0) return 0;
   const avg=values.reduce((s,v)=>s+v,0)/values.length;
   return Math.sqrt(values.reduce((s,v)=>s+Math.pow(v-avg,2),0)/values.length);
+}
+
+
+function loadStreaks(){
+  try{
+    const raw=localStorage.getItem(STREAK_STORAGE_KEY);
+    if(!raw){
+      return {
+        tempoCurrent:0,
+        tempoBest:0,
+        faceCurrent:0,
+        faceBest:0
+      };
+    }
+
+    const s=JSON.parse(raw);
+
+    return {
+      tempoCurrent:Number(s.tempoCurrent)||0,
+      tempoBest:Number(s.tempoBest)||0,
+      faceCurrent:Number(s.faceCurrent)||0,
+      faceBest:Number(s.faceBest)||0
+    };
+  }catch(err){
+    return {
+      tempoCurrent:0,
+      tempoBest:0,
+      faceCurrent:0,
+      faceBest:0
+    };
+  }
+}
+
+function saveStreaks(streaks){
+  try{
+    localStorage.setItem(
+      STREAK_STORAGE_KEY,
+      JSON.stringify(streaks)
+    );
+  }catch(err){
+    log('STREAK SAVE ERROR: '+err.message);
+  }
+}
+
+function renderStreaks(){
+  const s=loadStreaks();
+
+  $('tempoCurrentStreak').textContent=s.tempoCurrent;
+  $('tempoBestStreak').textContent='Best: '+s.tempoBest;
+
+  $('faceCurrentStreak').textContent=s.faceCurrent;
+  $('faceBestStreak').textContent='Best: '+s.faceBest;
+}
+
+function updateTempoStreak(back,forward,ratio){
+  const good=
+    back>=BACKSWING_MIN &&
+    back<=BACKSWING_MAX &&
+    forward>=FORWARD_MIN &&
+    forward<=FORWARD_MAX &&
+    ratio>=1.7 &&
+    ratio<=2.1;
+
+  const s=loadStreaks();
+
+  if(good){
+    s.tempoCurrent++;
+    if(s.tempoCurrent>s.tempoBest){
+      s.tempoBest=s.tempoCurrent;
+    }
+  }else{
+    s.tempoCurrent=0;
+  }
+
+  saveStreaks(s);
+  renderStreaks();
+}
+
+function updateFaceStreak(angle){
+  const good=Math.abs(angle)<=1.0;
+  const s=loadStreaks();
+
+  if(good){
+    s.faceCurrent++;
+    if(s.faceCurrent>s.faceBest){
+      s.faceBest=s.faceCurrent;
+    }
+  }else{
+    s.faceCurrent=0;
+  }
+
+  saveStreaks(s);
+  renderStreaks();
+}
+
+function csvEscape(value){
+  const str=String(value ?? '');
+  if(/[",\n]/.test(str)){
+    return '"'+str.replace(/"/g,'""')+'"';
+  }
+  return str;
+}
+
+function exportHistoryCSV(){
+  const sessions=loadSavedSessions();
+
+  if(sessions.length===0){
+    $('stateText').textContent='No saved sessions to export';
+    return;
+  }
+
+  const rows=[
+    [
+      'timestamp',
+      'mode',
+      'back_avg_ms',
+      'forward_avg_ms',
+      'tempo_avg',
+      'ratio_std',
+      'face_avg_deg',
+      'face_direction',
+      'face_consistency',
+      'face_std_dev_deg',
+      'face_tendency',
+      'coach'
+    ]
+  ];
+
+  sessions
+    .slice()
+    .reverse()
+    .forEach(s=>{
+      rows.push([
+        s.timestamp || '',
+        s.mode || '',
+        s.mode==='TEMPO' ? s.backAvg ?? '' : '',
+        s.mode==='TEMPO' ? s.forwardAvg ?? '' : '',
+        s.mode==='TEMPO' ? s.tempoAvg ?? '' : '',
+        s.mode==='TEMPO' ? s.ratioStd ?? '' : '',
+        s.mode==='FACE' ? s.average ?? '' : '',
+        s.mode==='FACE' ? s.direction ?? '' : '',
+        s.mode==='FACE' ? s.consistency ?? '' : '',
+        s.mode==='FACE' ? s.stdDev ?? '' : '',
+        s.mode==='FACE' ? s.tendency ?? '' : '',
+        s.coach || ''
+      ]);
+    });
+
+  const csv=
+    rows
+      .map(row=>row.map(csvEscape).join(','))
+      .join('\n');
+
+  const blob=
+    new Blob(
+      [csv],
+      {type:'text/csv;charset=utf-8'}
+    );
+
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+
+  const now=new Date();
+  const date=
+    now.getFullYear()+'-'+
+    String(now.getMonth()+1).padStart(2,'0')+'-'+
+    String(now.getDate()).padStart(2,'0');
+
+  a.href=url;
+  a.download=`putter-analyzer-history-${date}.csv`;
+
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+
+  setTimeout(
+    ()=>URL.revokeObjectURL(url),
+    1000
+  );
+
+  $('stateText').textContent='Session history exported';
 }
 
 function loadBaseline(){
@@ -1434,6 +1679,7 @@ function handleMessage(message){
     $('tempoRating').textContent=result[0];$('tempoRating').className='pill '+result[1];
 
     updateTempoVisualization(back,forward,ratio);
+    updateTempoStreak(back,forward,ratio);
     return;
   }
   if(type==='FACE'&&parts.length>=4){
@@ -1446,6 +1692,7 @@ function handleMessage(message){
 
     updateFaceVisualization(impact,direction);
     updateFaceSession(impact);
+    updateFaceStreak(impact);
 
     const result=faceClass(impact);
     $('faceRating').textContent=result[0];$('faceRating').className='pill '+result[1];
@@ -1520,11 +1767,13 @@ $('faceBtn').addEventListener('click',()=>{resetFaceSession();sendCommand('2')})
 $('calibrateBtn').addEventListener('click',()=>sendCommand('C'));
 $('resetBtn').addEventListener('click',()=>sendCommand('R'));
 $('clearHistoryBtn').addEventListener('click',clearSavedHistory);
+$('exportHistoryBtn').addEventListener('click',exportHistoryCSV);
 $('setTempoBaselineBtn').addEventListener('click',setLatestTempoBaseline);
 $('setFaceBaselineBtn').addEventListener('click',setLatestFaceBaseline);
 $('baselineToggle').addEventListener('change',toggleBaselineMode);
 
 renderBaseline();
+renderStreaks();
 renderSavedSessions();
 </script>
 </body>
