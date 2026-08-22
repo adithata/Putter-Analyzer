@@ -31,7 +31,7 @@ body{
   font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
   color:var(--text);
   min-height:100vh;
-  transition:background .2s ease,box-shadow .2s ease;
+  transition:background .2s ease, box-shadow .2s ease;
 }
 
 body.address-ready{
@@ -224,10 +224,6 @@ button:disabled{
   margin-top:3px;
 }
 
-/* =========================
-   PROJECTED START LINE
-========================= */
-
 .faceVizWrap{
   margin-top:16px;
   padding:14px;
@@ -246,9 +242,15 @@ button:disabled{
 }
 
 .faceVizLabel{
-  margin-top:4px;
+  margin-top:6px;
   font-size:20px;
   font-weight:800;
+}
+
+.faceVizSub{
+  color:var(--muted);
+  font-size:12px;
+  margin-top:4px;
 }
 
 .faceLegend{
@@ -256,7 +258,7 @@ button:disabled{
   justify-content:center;
   gap:16px;
   flex-wrap:wrap;
-  margin-top:8px;
+  margin-top:10px;
   font-size:12px;
   color:var(--muted);
 }
@@ -275,6 +277,27 @@ button:disabled{
 
 .legendTarget{
   background:#8b949e;
+}
+
+.rangeCard{
+  margin-top:12px;
+  background:var(--card2);
+  border:1px solid var(--border);
+  border-radius:14px;
+  padding:14px;
+}
+
+.rangeValue{
+  font-size:28px;
+  font-weight:800;
+  margin-top:4px;
+}
+
+.rangeNote{
+  color:var(--muted);
+  font-size:12px;
+  line-height:1.4;
+  margin-top:6px;
 }
 </style>
 </head>
@@ -300,7 +323,6 @@ button:disabled{
   <button id="connectBtn">Connect to Putter</button>
 
   <div id="phoneControls" class="hidden">
-
     <div class="controls">
       <button id="tempoBtn" class="modeBtn">Tempo</button>
       <button id="faceBtn" class="modeBtn">Face</button>
@@ -310,17 +332,13 @@ button:disabled{
       <button id="calibrateBtn" class="utilityBtn">Recalibrate</button>
       <button id="resetBtn" class="utilityBtn">Reset Session</button>
     </div>
-
   </div>
 
   <div id="tempoCard" class="card hidden">
-
     <div class="label">Tempo</div>
-
     <div id="tempoRatio" class="big">—</div>
 
     <div class="grid">
-
       <div class="mini">
         <div class="label">Backswing</div>
         <div id="backTime" class="value">—</div>
@@ -332,94 +350,76 @@ button:disabled{
         <div id="forwardTime" class="value">—</div>
         <div id="forwardStatus" class="timingStatus">—</div>
       </div>
-
     </div>
 
     <div id="tempoRating" class="pill">Waiting</div>
-
   </div>
 
   <div id="faceCard" class="card hidden">
-
     <div class="label">Face at impact</div>
-
     <div id="faceImpact" class="big">—</div>
 
     <div class="faceVizWrap">
+      <div class="faceVizTitle">Projected start line</div>
 
-      <div class="faceVizTitle">
-        Projected start line
-      </div>
+      <svg id="faceSvg" viewBox="0 0 360 220" style="width:100%;max-width:440px;height:auto;display:block;margin:0 auto;">
+        <!-- Labels -->
+        <text x="58" y="46" fill="#8b949e" font-size="11" text-anchor="middle">HOLE</text>
+        <text x="302" y="46" fill="#8b949e" font-size="11" text-anchor="middle">BALL</text>
 
-      <svg
-        id="faceSvg"
-        viewBox="0 0 340 220"
-        style="width:100%;max-width:420px;height:auto;display:block;margin:0 auto;"
-      >
-
-        <!-- Perfect start line -->
+        <!-- Ideal gray line: ball to hole (right to left) -->
         <line
-          x1="70"
-          y1="110"
-          x2="285"
-          y2="110"
+          x1="302" y1="110"
+          x2="60" y2="110"
           stroke="#8b949e"
           stroke-width="5"
-          stroke-linecap="round"
-        ></line>
+          stroke-linecap="round">
+        </line>
 
-        <!-- Actual projected start line -->
+        <!-- Actual projected line -->
         <line
           id="faceLine"
-          x1="70"
-          y1="110"
-          x2="285"
-          y2="110"
+          x1="302" y1="110"
+          x2="60" y2="110"
           stroke="#3fb950"
           stroke-width="7"
-          stroke-linecap="round"
-        ></line>
+          stroke-linecap="round">
+        </line>
 
-        <!-- Ball / origin -->
-        <circle
-          cx="70"
-          cy="110"
-          r="7"
-          fill="#f0f6fc"
-        ></circle>
+        <!-- Hole -->
+        <circle cx="60" cy="110" r="11" fill="none" stroke="#8b949e" stroke-width="4"></circle>
+        <circle cx="60" cy="110" r="3.5" fill="#8b949e"></circle>
 
-        <!-- Ideal target point -->
-        <circle
-          cx="285"
-          cy="110"
-          r="4"
-          fill="#8b949e"
-        ></circle>
-
+        <!-- Ball -->
+        <circle cx="302" cy="110" r="8" fill="#f0f6fc"></circle>
+        <circle cx="302" cy="110" r="3" fill="#0d1117"></circle>
       </svg>
 
-      <div id="faceVizLabel" class="faceVizLabel">
-        Waiting for a putt
-      </div>
+      <div id="faceVizLabel" class="faceVizLabel">Waiting for a putt</div>
+      <div id="faceVizSub" class="faceVizSub">Ball rolls right → left toward the hole</div>
 
       <div class="faceLegend">
-
         <div class="legendItem">
           <div class="legendSwatch legendTarget"></div>
-          <span>Ideal line</span>
+          <span>Ideal start line</span>
         </div>
 
         <div class="legendItem">
           <div id="actualLegend" class="legendSwatch" style="background:#3fb950"></div>
-          <span>Projected line</span>
+          <span>Actual start line</span>
         </div>
-
       </div>
 
+      <div class="rangeCard">
+        <div class="label">Estimated straight-putt make range</div>
+        <div id="makeRange" class="rangeValue">—</div>
+        <div id="rangeNote" class="rangeNote">
+          Assumes a flat straight putt, centered strike, and correct speed.
+        </div>
+      </div>
     </div>
 
     <div class="grid">
-
       <div class="mini">
         <div class="label">Transition</div>
         <div id="faceTransition" class="value">—</div>
@@ -429,19 +429,15 @@ button:disabled{
         <div class="label">Direction</div>
         <div id="faceDirection" class="value">—</div>
       </div>
-
     </div>
 
     <div id="faceRating" class="pill">Waiting</div>
-
   </div>
 
   <div id="sessionCard" class="card hidden">
-
     <div class="label">5-putt session average</div>
 
     <div class="grid">
-
       <div class="mini">
         <div class="label">Backswing</div>
         <div id="sessionBack" class="value">—</div>
@@ -451,14 +447,12 @@ button:disabled{
         <div class="label">Forward</div>
         <div id="sessionForward" class="value">—</div>
       </div>
-
     </div>
 
     <div style="margin-top:12px">
       <div class="label">Tempo</div>
       <div id="sessionTempo" class="value">—</div>
     </div>
-
   </div>
 
   <div class="card">
@@ -477,6 +471,11 @@ const BACKSWING_MIN=600;
 const BACKSWING_MAX=800;
 const FORWARD_MIN=300;
 const FORWARD_MAX=500;
+
+const HOLE_DIAMETER_IN=4.25;
+const BALL_DIAMETER_IN=1.68;
+const EFFECTIVE_TOLERANCE_IN=(HOLE_DIAMETER_IN-BALL_DIAMETER_IN)/2;
+const START_LINE_FACE_FACTOR=0.85;
 
 let device;
 let resultCharacteristic;
@@ -554,189 +553,161 @@ function faceClass(v){
   return ['POOR','bad'];
 }
 
-function updateFaceVisualization(angle,direction){
+function estimateMakeRangeFeet(faceAngleDegrees){
+  const startLineAngle=Math.abs(faceAngleDegrees)*START_LINE_FACE_FACTOR;
 
+  if(startLineAngle < 0.05){
+    return {
+      text:'20+ ft',
+      note:'Face angle is very close to square. This estimate is effectively long-range.'
+    };
+  }
+
+  const theta=startLineAngle*Math.PI/180;
+  const distanceInches=EFFECTIVE_TOLERANCE_IN/Math.tan(theta);
+  const distanceFeet=distanceInches/12;
+
+  if(!isFinite(distanceFeet) || distanceFeet<=0){
+    return {
+      text:'—',
+      note:'Could not estimate make range.'
+    };
+  }
+
+  if(distanceFeet >= 20){
+    return {
+      text:'20+ ft',
+      note:`Using ~${START_LINE_FACE_FACTOR.toFixed(2)}× face angle as start-line angle.`
+    };
+  }
+
+  if(distanceFeet < 1){
+    return {
+      text:'< 1 ft',
+      note:`Using ~${START_LINE_FACE_FACTOR.toFixed(2)}× face angle as start-line angle.`
+    };
+  }
+
+  return {
+    text:`${distanceFeet.toFixed(1)} ft`,
+    note:`Using ~${START_LINE_FACE_FACTOR.toFixed(2)}× face angle as start-line angle.`
+  };
+}
+
+function updateFaceVisualization(angle,direction){
   const absAngle=Math.abs(angle);
 
   let color='#3fb950';
-
-  if(absAngle>1.0 && absAngle<=4.0){
-    color='#d29922';
-  }
-  else if(absAngle>4.0){
-    color='#f85149';
-  }
-
-  /*
-    Real putting face errors are usually small.
-    To make the graphic useful:
-
-    real ±5° = visual ±35°
-
-    Anything outside ±5° is visually capped.
-  */
+  if(absAngle>1.0 && absAngle<=4.0) color='#d29922';
+  else if(absAngle>4.0) color='#f85149';
 
   const MAX_REAL_ANGLE=5.0;
-  const MAX_VISUAL_ANGLE=35.0;
-
-  const clampedAngle=
-    Math.max(
-      -MAX_REAL_ANGLE,
-      Math.min(MAX_REAL_ANGLE,angle)
-    );
+  const MAX_VISUAL_ANGLE=28.0;
+  const clamped=Math.max(-MAX_REAL_ANGLE,Math.min(MAX_REAL_ANGLE,angle));
 
   /*
-    XIAO convention:
-    negative = OPEN
-    positive = CLOSED
+    Visualization is BALL on right -> HOLE on left.
 
-    Negative screen rotation raises the line.
-    Positive screen rotation lowers the line.
-
-    This maps OPEN upward and CLOSED downward.
+    negative face angle = OPEN  -> line should end ABOVE the gray line
+    positive face angle = CLOSED -> line should end BELOW the gray line
   */
+  const displayAngle=-(clamped/MAX_REAL_ANGLE)*MAX_VISUAL_ANGLE;
+  const radians=displayAngle*Math.PI/180;
 
-  const visualAngle=
-    (clampedAngle/MAX_REAL_ANGLE)*
-    MAX_VISUAL_ANGLE;
-
-  const radians=
-    visualAngle*Math.PI/180;
-
-  const startX=70;
+  const startX=302;
   const startY=110;
-  const length=215;
+  const targetX=60;
+  const length=startX-targetX;
 
-  const endX=
-    startX+
-    length*Math.cos(radians);
+  const lineX2=startX - length*Math.cos(radians);
+  const lineY2=startY - length*Math.sin(radians);
 
-  const endY=
-    startY+
-    length*Math.sin(radians);
-
-  $('faceLine').setAttribute(
-    'x2',
-    endX
-  );
-
-  $('faceLine').setAttribute(
-    'y2',
-    endY
-  );
-
-  $('faceLine').setAttribute(
-    'stroke',
-    color
-  );
-
-  $('actualLegend').style.background=
-    color;
+  $('faceLine').setAttribute('x2', lineX2);
+  $('faceLine').setAttribute('y2', lineY2);
+  $('faceLine').setAttribute('stroke', color);
+  $('actualLegend').style.background=color;
 
   if(absAngle<0.05){
-    $('faceVizLabel').textContent=
-      '0.00° SQUARE';
+    $('faceVizLabel').textContent='0.00° SQUARE';
+  }else{
+    $('faceVizLabel').textContent=`${absAngle.toFixed(2)}° ${direction}`;
   }
-  else{
-    $('faceVizLabel').textContent=
-      `${absAngle.toFixed(2)}° ${direction}`;
+
+  if(direction === 'OPEN'){
+    $('faceVizSub').textContent='Ball rolls right → left and finishes ABOVE the target line';
+  }else if(direction === 'CLOSED'){
+    $('faceVizSub').textContent='Ball rolls right → left and finishes BELOW the target line';
+  }else{
+    $('faceVizSub').textContent='Ball rolls right → left toward the hole';
   }
+
+  const makeRange=estimateMakeRangeFeet(angle);
+  $('makeRange').textContent=makeRange.text;
+  $('rangeNote').textContent=
+    makeRange.note + ' Assumes a flat straight putt, centered strike, and correct speed.';
 }
 
 async function sendCommand(command){
-
-  if(
-    !device ||
-    !device.gatt.connected ||
-    !commandCharacteristic
-  ){
+  if(!device || !device.gatt.connected || !commandCharacteristic){
     $('stateText').textContent='Connect to putter first';
     return;
   }
 
   try{
-    await commandCharacteristic.writeValue(
-      new TextEncoder().encode(command)
-    );
-
+    await commandCharacteristic.writeValue(new TextEncoder().encode(command));
     log('COMMAND -> '+command);
-  }
-  catch(err){
+  }catch(err){
     log('COMMAND ERROR: '+err.message);
     $('stateText').textContent='Command failed';
   }
 }
 
 function handleMessage(message){
-
   log(message);
 
   const parts=message.split(',');
   const type=parts[0];
 
   if(type==='STATE'){
-
     if(parts[1]==='ADDRESS'){
       $('stateText').textContent='Ready — make your putt';
       setAddressReady(true);
-    }
-    else if(parts[1]==='WAITING'){
+    }else if(parts[1]==='WAITING'){
       $('stateText').textContent='Hold still at address';
       setAddressReady(false);
     }
-
     return;
   }
 
   if(type==='MODE'){
     showMode(parts[1]);
-
-    $('stateText').textContent=
-      parts[1]==='MENU'
-        ? 'Select a mode'
-        : 'Hold still at address';
-
+    $('stateText').textContent=parts[1]==='MENU' ? 'Select a mode' : 'Hold still at address';
     return;
   }
 
   if(type==='CALIBRATION'){
-
     setAddressReady(false);
 
     if(parts[1]==='START'){
       $('stateText').textContent='Keep putter completely still — calibrating…';
       $('calibrateBtn').disabled=true;
-    }
-
-    else if(parts[1]==='DONE'){
+    }else if(parts[1]==='DONE'){
       $('stateText').textContent='Calibration complete — hold still at address';
       $('calibrateBtn').disabled=false;
     }
-
     return;
   }
 
-  if(
-    type==='TEMPO' &&
-    parts[1]==='RESET'
-  ){
-
+  if(type==='TEMPO' && parts[1]==='RESET'){
     $('sessionCard').classList.add('hidden');
-
     $('sessionBack').textContent='—';
     $('sessionForward').textContent='—';
     $('sessionTempo').textContent='—';
-
     $('stateText').textContent='Session reset — hold still at address';
-
     return;
   }
 
-  if(
-    type==='TEMPO' &&
-    parts.length>=4
-  ){
-
+  if(type==='TEMPO' && parts.length>=4){
     showMode('TEMPO');
 
     const back=Number(parts[1]);
@@ -747,88 +718,44 @@ function handleMessage(message){
     $('backTime').textContent=back+' ms';
     $('forwardTime').textContent=forward+' ms';
 
-    let result=
-      timingClass(
-        back,
-        BACKSWING_MIN,
-        BACKSWING_MAX
-      );
-
+    let result=timingClass(back,BACKSWING_MIN,BACKSWING_MAX);
     $('backStatus').textContent=result[0];
     $('backStatus').className='timingStatus '+result[1];
 
-    result=
-      timingClass(
-        forward,
-        FORWARD_MIN,
-        FORWARD_MAX
-      );
-
+    result=timingClass(forward,FORWARD_MIN,FORWARD_MAX);
     $('forwardStatus').textContent=result[0];
     $('forwardStatus').className='timingStatus '+result[1];
 
     result=tempoClass(ratio);
-
     $('tempoRating').textContent=result[0];
     $('tempoRating').className='pill '+result[1];
-
     return;
   }
 
-  if(
-    type==='FACE' &&
-    parts.length>=4
-  ){
-
+  if(type==='FACE' && parts.length>=4){
     showMode('FACE');
 
     const transition=Number(parts[1]);
     const impact=Number(parts[2]);
     const direction=parts[3];
 
-    $('faceImpact').textContent=
-      Math.abs(impact).toFixed(2)+'°';
+    $('faceImpact').textContent=Math.abs(impact).toFixed(2)+'°';
+    $('faceTransition').textContent=Math.abs(transition).toFixed(2)+'°';
+    $('faceDirection').textContent=direction;
 
-    $('faceTransition').textContent=
-      Math.abs(transition).toFixed(2)+'°';
+    updateFaceVisualization(impact,direction);
 
-    $('faceDirection').textContent=
-      direction;
-
-    updateFaceVisualization(
-      impact,
-      direction
-    );
-
-    const result=
-      faceClass(impact);
-
-    $('faceRating').textContent=
-      result[0];
-
-    $('faceRating').className=
-      'pill '+result[1];
-
+    const result=faceClass(impact);
+    $('faceRating').textContent=result[0];
+    $('faceRating').className='pill '+result[1];
     return;
   }
 
-  if(
-    type==='SESSION' &&
-    parts.length>=4 &&
-    currentMode==='TEMPO'
-  ){
-
+  if(type==='SESSION' && parts.length>=4 && currentMode==='TEMPO'){
     $('sessionCard').classList.remove('hidden');
-
-    $('sessionBack').textContent=
-      Math.round(Number(parts[1]))+' ms';
-
-    $('sessionForward').textContent=
-      Math.round(Number(parts[2]))+' ms';
-
-    $('sessionTempo').textContent=
-      Number(parts[3]).toFixed(2)+' : 1';
-
+    $('sessionBack').textContent=Math.round(Number(parts[1]))+' ms';
+    $('sessionForward').textContent=Math.round(Number(parts[2]))+' ms';
+    $('sessionTempo').textContent=Number(parts[3]).toFixed(2)+' : 1';
     return;
   }
 
@@ -839,9 +766,7 @@ function handleMessage(message){
 }
 
 async function connect(){
-
   try{
-
     if(!navigator.bluetooth){
       alert('Web Bluetooth is not available in this browser.');
       return;
@@ -849,118 +774,53 @@ async function connect(){
 
     $('stateText').textContent='Choose Putter Analyzer…';
 
-    device=
-      await navigator.bluetooth.requestDevice({
-        filters:[
-          {
-            services:[
-              SERVICE_UUID
-            ]
-          }
-        ]
-      });
+    device=await navigator.bluetooth.requestDevice({
+      filters:[{services:[SERVICE_UUID]}]
+    });
 
-    device.addEventListener(
-      'gattserverdisconnected',
-      ()=>{
-        setConnected(false);
-        setAddressReady(false);
-        showMode(null);
-        $('stateText').textContent='Disconnected';
-        log('Disconnected');
-      }
-    );
+    device.addEventListener('gattserverdisconnected', ()=>{
+      setConnected(false);
+      setAddressReady(false);
+      showMode(null);
+      $('stateText').textContent='Disconnected';
+      log('Disconnected');
+    });
 
     $('stateText').textContent='Connecting…';
 
-    const server=
-      await device.gatt.connect();
+    const server=await device.gatt.connect();
+    const service=await server.getPrimaryService(SERVICE_UUID);
 
-    const service=
-      await server.getPrimaryService(
-        SERVICE_UUID
-      );
-
-    resultCharacteristic=
-      await service.getCharacteristic(
-        RESULT_UUID
-      );
-
-    commandCharacteristic=
-      await service.getCharacteristic(
-        COMMAND_UUID
-      );
+    resultCharacteristic=await service.getCharacteristic(RESULT_UUID);
+    commandCharacteristic=await service.getCharacteristic(COMMAND_UUID);
 
     await resultCharacteristic.startNotifications();
 
-    resultCharacteristic.addEventListener(
-      'characteristicvaluechanged',
-      event=>{
+    resultCharacteristic.addEventListener('characteristicvaluechanged', event=>{
+      const message=new TextDecoder('utf-8')
+        .decode(event.target.value)
+        .replace(/\0/g,'')
+        .trim();
 
-        const message=
-          new TextDecoder('utf-8')
-            .decode(event.target.value)
-            .replace(/\0/g,'')
-            .trim();
-
-        if(message){
-          handleMessage(message);
-        }
-      }
-    );
+      if(message) handleMessage(message);
+    });
 
     setConnected(true);
     showMode(null);
-
-    $('stateText').textContent=
-      'Connected — choose Tempo or Face';
-
-    log(
-      'Connected to '+
-      (device.name||'Putter Analyzer')
-    );
-  }
-
-  catch(err){
-
+    $('stateText').textContent='Connected — choose Tempo or Face';
+    log('Connected to '+(device.name||'Putter Analyzer'));
+  }catch(err){
     setAddressReady(false);
-
-    $('stateText').textContent=
-      'Connection failed';
-
-    log(
-      'ERROR: '+
-      err.message
-    );
+    $('stateText').textContent='Connection failed';
+    log('ERROR: '+err.message);
   }
 }
 
-$('connectBtn').addEventListener(
-  'click',
-  connect
-);
-
-$('tempoBtn').addEventListener(
-  'click',
-  ()=>sendCommand('1')
-);
-
-$('faceBtn').addEventListener(
-  'click',
-  ()=>sendCommand('2')
-);
-
-$('calibrateBtn').addEventListener(
-  'click',
-  ()=>sendCommand('C')
-);
-
-$('resetBtn').addEventListener(
-  'click',
-  ()=>sendCommand('R')
-);
-
+$('connectBtn').addEventListener('click', connect);
+$('tempoBtn').addEventListener('click', ()=>sendCommand('1'));
+$('faceBtn').addEventListener('click', ()=>sendCommand('2'));
+$('calibrateBtn').addEventListener('click', ()=>sendCommand('C'));
+$('resetBtn').addEventListener('click', ()=>sendCommand('R'));
 </script>
-
 </body>
 </html>
