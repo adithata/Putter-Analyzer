@@ -256,7 +256,10 @@ button:disabled{opacity:.38;cursor:not-allowed}
   grid-template-columns:1fr 1fr;
   gap:8px;
 }
-.utilityControls{margin:8px 0 16px}
+.utilityControls{
+  margin:8px 0 16px;
+  grid-template-columns:1fr 1fr 1fr;
+}
 
 .modeBtn,.utilityBtn,.baselineBtn,.exportBtn,#clearHistoryBtn{
   background:linear-gradient(180deg,#101611,#090e0a);
@@ -557,6 +560,7 @@ button:disabled{opacity:.38;cursor:not-allowed}
 
 @media (max-width:430px){
   .wrap{padding:18px 11px 36px}
+  .utilityControls{grid-template-columns:1fr 1fr}
   h1{font-size:29px}
   .logoMark{width:42px;height:42px;font-size:22px}
   .big{font-size:46px}
@@ -668,6 +672,7 @@ button:disabled{opacity:.38;cursor:not-allowed}
     </div>
     <div class="utilityControls">
       <button id="calibrateBtn" class="utilityBtn">Recalibrate</button>
+      <button id="orientationBtn" class="utilityBtn">Orientation</button>
       <button id="resetBtn" class="utilityBtn">Reset Session</button>
     </div>
   </div>
@@ -1898,6 +1903,34 @@ function handleMessage(message){
     return;
   }
 
+  if(type==='ORIENT'){
+    setAddressReady(false);
+
+    if(parts[1]==='START'){
+      $('stateText').textContent='Orientation setup starting…';
+      $('orientationBtn').disabled=true;
+      $('calibrateBtn').disabled=true;
+    }
+    else if(parts[1]==='STROKE'){
+      $('stateText').textContent='Orientation: make several slow practice strokes — BACKSWING first';
+    }
+    else if(parts[1]==='FACE'){
+      $('stateText').textContent='Orientation: hold at address and rotate the face OPEN first, then CLOSED';
+    }
+    else if(parts[1]==='DONE'){
+      $('stateText').textContent='Orientation learned — hold still at address';
+      $('orientationBtn').disabled=false;
+      $('calibrateBtn').disabled=false;
+    }
+    else if(parts[1]==='FAIL'){
+      $('stateText').textContent='Orientation setup failed — try again with clearer movements';
+      $('orientationBtn').disabled=false;
+      $('calibrateBtn').disabled=false;
+    }
+
+    return;
+  }
+
   if(type==='CALIBRATION'){
     setStabilityState('IDLE');
     if(parts[1]==='START'){$('stateText').textContent='Keep putter completely still — calibrating…';$('calibrateBtn').disabled=true}
@@ -2022,6 +2055,7 @@ $('connectBtn').addEventListener('click',connect);
 $('tempoBtn').addEventListener('click',()=>sendCommand('1'));
 $('faceBtn').addEventListener('click',()=>{resetFaceSession();sendCommand('2')});
 $('calibrateBtn').addEventListener('click',()=>sendCommand('C'));
+$('orientationBtn').addEventListener('click',()=>sendCommand('O'));
 $('resetBtn').addEventListener('click',()=>sendCommand('R'));
 $('clearHistoryBtn').addEventListener('click',clearSavedHistory);
 $('exportHistoryBtn').addEventListener('click',exportHistoryCSV);
