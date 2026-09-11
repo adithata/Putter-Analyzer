@@ -230,6 +230,38 @@ body[data-phase="error"] .status { border-color: #bd827f; }
 }
 
 </style>
+<style id="ready-edge-glow">
+/* The existing address-ready state drives this steady viewport indicator. */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  pointer-events: none;
+  border: 2px solid rgba(118, 183, 255, .92);
+  border-radius: 12px;
+  box-shadow:
+    inset 0 0 18px rgba(76, 153, 255, .48),
+    inset 0 0 52px rgba(64, 139, 255, .20);
+  opacity: 0;
+  transition: none;
+}
+body.address-ready::after {
+  opacity: 1;
+  transition: opacity 180ms ease-out;
+}
+@media (max-width: 720px) {
+  body::after {
+    border-radius: 8px;
+    box-shadow:
+      inset 0 0 14px rgba(76, 153, 255, .48),
+      inset 0 0 36px rgba(64, 139, 255, .18);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  body.address-ready::after { transition: none; }
+}
+</style>
 </head>
 <body data-phase="offline">
 <a class="skip-link" href="#live">Skip to live session</a>
